@@ -1,0 +1,31 @@
+name: Build UF2
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Set up Arduino CLI
+      uses: arduino/setup-arduino-cli@v1
+    - name: Install dependencies
+      run: |
+        arduino-cli core update-index
+        arduino-cli core install arduino:mbed_rp2040
+    - name: Build example
+      run: |
+        arduino-cli compile --fqbn arduino:mbed_rp2040:nanorp2040connect examples/in_circuit_test
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: uf2
+        path: examples/in_circuit_test/build/arduino.mbed_rp2040.nanorp2040connect/in_circuit_test.ino.uf2

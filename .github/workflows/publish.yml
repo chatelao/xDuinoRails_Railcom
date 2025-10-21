@@ -1,0 +1,17 @@
+name: Publish to Arduino Library Manager
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Publish
+      uses: arduino/actions/publish-library@v1
+      with:
+        token: ${{ secrets.ARDUINO_LIBRARY_MANAGER_TOKEN }}

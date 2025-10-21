@@ -1,0 +1,24 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Compile Arduino Sketches
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: rp2040:rp2040:pico
+          platforms: |
+            - name: rp2040:rp2040
+              source-url: https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+          sketch-paths: |
+            - tests/DCCMessageTest
+            - examples/InCircuitTest
+          libraries: |
+            - name: AUnit

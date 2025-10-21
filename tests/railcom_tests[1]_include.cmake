@@ -1,0 +1,5 @@
+if(EXISTS "/app/tests/railcom_tests[1]_tests.cmake")
+  include("/app/tests/railcom_tests[1]_tests.cmake")
+else()
+  add_test(railcom_tests_NOT_BUILT railcom_tests_NOT_BUILT)
+endif()
