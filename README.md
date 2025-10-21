@@ -1,143 +1,59 @@
 # RP2040 RailCom Library
 
-An Arduino library for encoding and decoding RailCom messages from and to an RP2040 UART.
+An Arduino library for encoding and decoding RailCom messages from and to an RP2040 UART, compliant with the RCN-217 specification.
 
 ## Features
 
--   **RailCom Encoding and Decoding:**  Handles the low-level details of RailCom communication.
--   **DCC Message Parsing:**  Parses raw DCC messages to extract commands and addresses.
--   **Automatic Locomotive Detection:**  Implements the RailCom discovery protocol.
--   **PIO-based Cutout:**  Uses the RP2040's PIO to generate the precise cutout required for RailCom.
--   **Separate Sender and Receiver Classes:** Provides a clear and easy-to-use API for sending and receiving RailCom messages.
+-   **High-Level RCN-217 API:** A `RailcomManager` class that simplifies the creation and sending of standard RailCom messages for both vehicle and accessory decoders.
+-   **RailCom Encoding and Decoding:** Handles the 4-out-of-8 encoding and decoding required for robust communication.
+-   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise cutout required for RailCom.
+-   **Comprehensive Examples:** Includes examples for locomotive, accessory, and function decoders, as well as a command station sketch for testing.
 
 ## Installation
 
-1.  Download the latest release from the [GitHub repository](https://github.com/your-username/rp2040-railcom).
+1.  Download the latest release from the [GitHub repository](https://github.com/Jules/rp2040-railcom).
 2.  In the Arduino IDE, go to `Sketch > Include Library > Add .ZIP Library...` and select the downloaded file.
 
-## Usage
+## Getting Started
 
-### RailcomSender
+The core of the library is the `RailcomManager` class. It provides a high-level interface for sending RCN-217 compliant messages.
+
+### Example: Locomotive Decoder
+
+This example shows how a simple locomotive decoder would broadcast its address.
 
 ```cpp
 #include <Arduino.h>
 #include "Railcom.h"
+#include "RailcomManager.h"
+
+const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 
 RailcomSender sender(uart0, 0, 1);
+RailcomReceiver receiver(uart0, 0, 1);
+RailcomManager manager(sender, receiver);
 
 void setup() {
-  Serial.begin(115200);
   sender.begin();
-}
-
-void loop() {
-  // Send a DCC message with a RailCom cutout
-  uint8_t dcc_data[] = {0xFF, 0xFF, 0x01};
-  DCCMessage msg(dcc_data, sizeof(dcc_data));
-  sender.send_dcc_async(msg);
-  delay(100);
-}
-```
-
-### RailcomReceiver
-
-```cpp
-#include <Arduino.h>
-#include "Railcom.h"
-
-RailcomReceiver receiver(uart1, 4, 5);
-
-void setup() {
-  Serial.begin(115200);
   receiver.begin();
-  receiver.set_decoder_address(0x1234);
 }
 
 void loop() {
-  // Read incoming DCC messages
-  // In a real application, this would come from a DCC decoder
-    uint8_t dcc_data[] = {0xFF, 0xFF, 0x01};
-    DCCMessage msg = receiver.parse_dcc_message(dcc_data, sizeof(dcc_data));
-
-  // Handle the DCC message
-  receiver.handle_dcc_message(msg);
-
-  // Check for discovered locomotives
-  const std::vector<uint16_t>& addresses = receiver.get_discovered_addresses();
-  for (uint16_t address : addresses) {
-    Serial.print("Discovered locomotive: ");
-    Serial.println(address, HEX);
-  }
+  // A real decoder would send this in response to a DCC packet.
+  manager.sendAddress(LOCOMOTIVE_ADDRESS);
+  delay(1000);
 }
 ```
 
-## API
+For more detailed examples, see the `examples` folder:
+- **LocomotiveDecoder:** Demonstrates address broadcasting and responding to POM requests.
+- **AccessoryDecoder:** Shows how to report status and send Service Requests (SRQ).
+- **FunctionDecoder:** Simulates reporting dynamic data like fuel levels.
+- **CommandStation:** An interactive sketch to test your decoders.
 
-### `DCCMessage`
+## API Reference
 
-#### `DCCMessage(const uint8_t* data, size_t len)`
-
-Creates a new DCC message.
-
-#### `uint16_t getAddress() const`
-
-Gets the address of the DCC message.
-
-#### `uint8_t getCommand() const`
-
-Gets the command of the DCC message.
-
-### `RailcomSender`
-
-#### `RailcomSender(uart_inst_t* uart, uint txPin, uint rxPin)`
-
-Creates a new RailCom sender.
-
-#### `void begin()`
-
-Initializes the UART and PIO.
-
-#### `void end()`
-
-Deinitializes the UART and PIO.
-
-#### `void send_dcc_async(const DCCMessage& msg)`
-
-Sends a DCC message with a RailCom cutout.
-
-### `RailcomReceiver`
-
-#### `RailcomReceiver(uart_inst_t* uart, uint txPin, uint rxPin)`
-
-Creates a new RailCom receiver.
-
-#### `void begin()`
-
-Initializes the UART.
-
-#### `void end()`
-
-Deinitializes the UART.
-
-#### `bool read_response(uint8_t* buffer, size_t len, uint timeout_ms)`
-
-Reads a RailCom response.
-
-#### `DCCMessage parse_dcc_message(const uint8_t* data, size_t len)`
-
-Parses a raw DCC message.
-
-#### `void set_decoder_address(uint16_t address)`
-
-Sets the address of the decoder.
-
-#### `void handle_dcc_message(const DCCMessage& msg)`
-
-Handles a DCC message, including discovery requests.
-
-#### `const std::vector<uint16_t>& get_discovered_addresses() const`
-
-Gets the addresses of discovered locomotives.
+For a detailed API reference and explanation of the high-level functions, please see the **[RCN-217 API Documentation](docs/RCN-217_API.md)**.
 
 ## Contributing
 

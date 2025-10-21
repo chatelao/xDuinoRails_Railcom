@@ -1,42 +1,67 @@
 #include <Arduino.h>
-#include <Railcom.h>
+#include "Railcom.h"
+#include "RailcomManager.h"
 
-// Sender on UART0
-RailcomSender sender(uart0, 0, 1);
+// Command Station on UART0
+RailcomSender cs_sender(uart0, 0, 1);
+RailcomReceiver cs_receiver(uart0, 0, 1);
+RailcomManager cs_manager(cs_sender, cs_receiver);
 
-// Receiver on UART1
-RailcomReceiver receiver(uart1, 4, 5);
+// Locomotive Decoder on UART1
+const uint16_t LOCO_ADDRESS = 1234;
+const uint8_t CV_VALUE = 42;
+RailcomSender loco_sender(uart1, 4, 5);
+RailcomReceiver loco_receiver(uart1, 4, 5);
+RailcomManager loco_manager(loco_sender, loco_receiver);
 
 void setup() {
-  Serial.begin(115200);
-  while (!Serial); // wait for serial port to connect. Needed for native USB
+    Serial.begin(115200);
+    while (!Serial);
 
-  sender.begin();
-  receiver.begin();
-  receiver.set_decoder_address(0x1234);
+    cs_sender.begin();
+    cs_receiver.begin();
+    loco_sender.begin();
+    loco_receiver.begin();
 
-  // Send a discovery request
-  uint8_t data[] = {0xFF, 0xFF, 0x01};
-  DCCMessage msg(data, sizeof(data));
-  sender.send_dcc_async(msg);
+    Serial.println("In-Circuit Test: POM Read (Refactored)");
 
-  // Wait for the response
-  delay(10);
+    // --- Loco: Queue a POM response ---
+    // This simulates the loco getting a request and preparing a response.
+    loco_manager.sendPomResponse(CV_VALUE);
 
-  // Read the response
-  uint8_t buffer[2];
-  if (receiver.read_response(buffer, sizeof(buffer), 100)) {
-    uint16_t address = (buffer[0] << 8) | buffer[1];
-    if (address == 0x1234) {
-      Serial.println("In-circuit test passed!");
+    // --- CS: Send DCC packet to trigger cutout ---
+    Serial.println("Command Station: Sending DCC packet to trigger cutout...");
+    uint8_t dcc_data[] = { (uint8_t)(LOCO_ADDRESS >> 8), (uint8_t)LOCO_ADDRESS, 0};
+    DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
+    cs_sender.send_dcc_with_cutout(dcc_msg);
+
+    // We need to run the task method for the sender to actually send the data
+    // after the ISR fires.
+    delay(1); // Give time for ISR to fire
+    loco_sender.task();
+    delay(10);
+
+    // --- CS: Read and verify the response ---
+    Serial.println("Command Station: Reading response...");
+    RailcomMessage* msg = cs_manager.readMessage();
+
+    if (msg != nullptr && msg->id == RailcomID::POM) {
+        PomMessage* pom_msg = static_cast<PomMessage*>(msg);
+        if (pom_msg->cvValue == CV_VALUE) {
+            Serial.println("SUCCESS: In-circuit test passed!");
+        } else {
+            Serial.print("FAILURE: Incorrect CV value. Expected ");
+            Serial.print(CV_VALUE);
+            Serial.print(", got ");
+            Serial.println(pom_msg->cvValue);
+        }
     } else {
-      Serial.print("In-circuit test failed: incorrect address. Expected 0x1234, got 0x");
-      Serial.println(address, HEX);
+        Serial.println("FAILURE: Did not receive a valid POM response.");
     }
-  } else {
-    Serial.println("In-circuit test failed: no response");
-  }
 }
 
 void loop() {
+    // Keep tasks running to flush any remaining UART data etc.
+    cs_sender.task();
+    loco_sender.task();
 }

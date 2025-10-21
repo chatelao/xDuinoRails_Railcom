@@ -3,63 +3,78 @@
 
 #include <Arduino.h>
 #include <vector>
+#include <queue>
 #include "hardware/pio.h"
 #include "hardware/uart.h"
 
+// Forward declaration
+class RailcomSender;
+
+// Global instance pointer for the IRQ handler
+extern RailcomSender* pio_sender_instance;
+
 class DCCMessage {
 public:
-  DCCMessage();
-  DCCMessage(const uint8_t* data, size_t len);
-  uint16_t getAddress() const;
-  uint8_t getCommand() const;
-  const uint8_t* getData() const;
-  size_t getLength() const;
+    DCCMessage();
+    DCCMessage(const uint8_t* data, size_t len);
+    const uint8_t* getData() const;
+    size_t getLength() const;
 
 private:
-  uint8_t _data[8];
-  size_t _len;
+    uint8_t _data[12]; // Increased size to be safe
+    size_t _len;
 };
 
 class RailcomSender {
 public:
-  RailcomSender(uart_inst_t* uart, uint txPin, uint rxPin);
-  void begin();
-  void end();
-  void send_dcc_async(const DCCMessage& msg);
+    RailcomSender(uart_inst_t* uart, uint txPin, uint rxPin);
+    void begin();
+    void end();
+
+    // Sends a DCC packet and creates a cutout for RailCom messages
+    void send_dcc_with_cutout(const DCCMessage& dccMsg);
+
+    // Queues a raw, encoded message to be sent in the next available cutout
+    void queue_message(uint8_t channel, const std::vector<uint8_t>& message);
+
+    // This method should be called repeatedly in the main loop to handle sending.
+    void task();
 
 private:
-  void pio_init();
-  static void pio_irq_handler();
+    friend void railcom_pio_irq_handler();
+    void pio_init();
+    void send_queued_messages();
 
-  uart_inst_t* _uart;
-  uint _txPin;
-  uint _rxPin;
-  PIO _pio;
-  uint _sm;
-  static RailcomSender* _instance;
-  static DCCMessage _msg;
+    uart_inst_t* _uart;
+    uint _txPin;
+    uint _rxPin;
+    PIO _pio;
+    uint _sm;
+
+#ifdef AUNIT_H
+public: // Make queues accessible for testing
+#endif
+    std::queue<std::vector<uint8_t>> _ch1_queue;
+    std::queue<std::vector<uint8_t>> _ch2_queue;
+
+    volatile bool _send_pending; // Flag set by ISR
 };
 
 class RailcomReceiver {
 public:
-  RailcomReceiver(uart_inst_t* uart, uint txPin, uint rxPin);
-  void begin();
-  void end();
-  bool read_response(uint8_t* buffer, size_t len, uint timeout_ms);
-  DCCMessage parse_dcc_message(const uint8_t* data, size_t len);
-  void set_decoder_address(uint16_t address);
-  void handle_dcc_message(const DCCMessage& msg);
-  const std::vector<uint16_t>& get_discovered_addresses() const;
+    RailcomReceiver(uart_inst_t* uart, uint txPin, uint rxPin);
+    void begin();
+    void end();
+    void set_decoder_address(uint16_t address);
 
+    // Reads a complete RailCom response (multiple datagrams)
+    bool read_response(std::vector<uint8_t>& buffer, uint timeout_ms);
 
 private:
-  void send_discovery_response();
-
-  uart_inst_t* _uart;
-  uint _txPin;
-  uint _rxPin;
-  uint16_t _decoder_address;
-  std::vector<uint16_t> _discovered_addresses;
+    uart_inst_t* _uart;
+    uint _txPin;
+    uint _rxPin;
+    uint16_t _decoder_address;
 };
 
-#endif
+#endif // RAILCOM_H
