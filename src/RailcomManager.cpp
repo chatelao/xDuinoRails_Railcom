@@ -47,7 +47,7 @@ uint8_t get_datagram_payload_bits(RailcomID id) {
 
 RailcomMessage* RailcomManager::readMessage() {
     std::vector<uint8_t> new_bytes;
-    if (_receiver.read_response(new_bytes, 5)) {
+    if (_receiver.read_raw_bytes(new_bytes, 5)) {
         for (uint8_t byte : new_bytes) {
             _raw_buffer.push_back(byte);
         }

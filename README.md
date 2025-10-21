@@ -26,11 +26,14 @@ This example shows how a simple locomotive decoder would broadcast its address.
 #include <Arduino.h>
 #include "Railcom.h"
 #include "RailcomManager.h"
+#include "HardwareUartStream.h"
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 
-RailcomSender sender(uart0, 0, 1);
-RailcomReceiver receiver(uart0, 0, 1);
+// Use a hardware UART stream for communication
+HardwareUartStream stream(uart0, 0, 1);
+RailcomSender sender(&stream, 0); // PIO pin is TX pin
+RailcomReceiver receiver(&stream);
 RailcomManager manager(sender, receiver);
 
 void setup() {

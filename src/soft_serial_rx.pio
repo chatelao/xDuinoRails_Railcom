@@ -1,0 +1,27 @@
+;
+; PIO-based Software Serial RX
+;
+; This program continuously samples a GPIO pin to receive serial data
+; at a configurable baud rate. It is based on the Pico SDK's pio_uart_rx example.
+;
+
+.program soft_serial_rx
+
+.wrap_target
+    ; Wait for the start bit
+    wait 0 pin 0
+    ; Align to the middle of the first data bit
+    set x, 7            ; Pre-load bit counter
+    mov osr, null       ; Clear the OSR
+
+    ; Loop for 8 data bits
+bit_loop:
+    in pins, 1          ; Shift in 1 bit from the pin
+    jmp x--, bit_loop   ; Loop 8 times
+
+    ; Wait for the stop bit
+    wait 1 pin 0
+
+    ; Push the received byte into the RX FIFO
+    push
+.wrap
