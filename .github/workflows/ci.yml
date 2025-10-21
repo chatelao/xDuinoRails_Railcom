@@ -16,7 +16,7 @@ jobs:
       - name: Install RP2040 Platform
         run: |
           arduino-cli core update-index
-          arduino-cli core install rp2040:rp2040@3.1.1 --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+          arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
 
       - name: Compile All Sketches
         uses: arduino/compile-sketches@v1
@@ -29,11 +29,11 @@ jobs:
             - examples/AccessoryDecoderDummy
             - examples/AccessoryDecoderNmra
             - examples/CommandStation
-            - examples/FunctionDecoder
+            - examples/FunctionDecoderDummy
             - examples/LocomotiveDecoderDummy
             - examples/LocomotiveDecoderNmra
             - tests/DCCMessageTest
             - tests/EncodingTest
             - tests/InCircuitTest
-            - tests/ManagerTest
+            - tests/TxManagerTest
             - tests/EndToEndTest
