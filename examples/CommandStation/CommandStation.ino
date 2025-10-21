@@ -25,7 +25,7 @@ void parseCommand(String cmd) {
 
         uint8_t dcc_data[] = { (uint8_t)(addr >> 8), (uint8_t)addr, 0b11101100, (uint8_t)cv, 0};
         DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
-        sender.send_dcc_with_cutout(dcc_msg);
+        sender.begin_cutout_sequence(dcc_msg);
     }
 }
 

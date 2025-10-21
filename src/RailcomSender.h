@@ -16,7 +16,7 @@ public:
     RailcomSender(uart_inst_t* uart, uint tx_pin, uint pio_pin);
     void begin();
     void end();
-    void send_dcc_with_cutout(const DCCMessage& dccMsg);
+    void begin_cutout_sequence(const DCCMessage& dccMsg);
     void queue_message(uint8_t channel, const std::vector<uint8_t>& message);
     void task();
 

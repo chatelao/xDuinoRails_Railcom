@@ -32,6 +32,6 @@ void loop() {
         // Let the state machine decide what to queue (it will queue an ADR broadcast)
         stateMachine.handleDccPacket(dcc_msg);
 
-        sender.send_dcc_with_cutout(dcc_msg);
+        sender.begin_cutout_sequence(dcc_msg);
     }
 }

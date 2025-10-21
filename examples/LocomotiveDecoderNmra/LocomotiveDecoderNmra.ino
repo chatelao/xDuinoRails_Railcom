@@ -19,7 +19,7 @@ void notifyDccSpeedPacket(uint16_t address, DCC_ADDR_TYPE addr_type, uint8_t spe
     stateMachine.handleDccPacket(dcc_msg);
 
     // Trigger the cutout so the message can be sent
-    sender.send_dcc_with_cutout(dcc_msg);
+    sender.begin_cutout_sequence(dcc_msg);
 }
 
 void setup() {

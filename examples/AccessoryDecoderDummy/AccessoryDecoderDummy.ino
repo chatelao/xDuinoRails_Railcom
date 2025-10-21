@@ -53,6 +53,6 @@ void loop() {
 
         DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
         stateMachine.handleDccPacket(dcc_msg);
-        sender.send_dcc_with_cutout(dcc_msg);
+        sender.begin_cutout_sequence(dcc_msg);
     }
 }

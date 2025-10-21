@@ -31,7 +31,7 @@ void setup() {
     loco_tx_manager.sendPomResponse(CV_VALUE);
 
     DCCMessage dcc_msg;
-    cs_sender.send_dcc_with_cutout(dcc_msg);
+    cs_sender.begin_cutout_sequence(dcc_msg);
 
     delay(1);
     loco_sender.task();

@@ -34,6 +34,6 @@ void loop() {
         stateMachine.handleDccPacket(dcc_msg);
 
         // 3. Trigger the cutout to send the queued message
-        sender.send_dcc_with_cutout(dcc_msg);
+        sender.begin_cutout_sequence(dcc_msg);
     }
 }

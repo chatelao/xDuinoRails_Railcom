@@ -14,7 +14,7 @@ NmraDcc dcc;
 void notifyDccAccPacket(uint16_t address, bool activate, uint8_t output, bool C, bool S) {
     DCCMessage dcc_msg(dcc.getPacket(), dcc.getPacketSize());
     stateMachine.handleDccPacket(dcc_msg);
-    sender.send_dcc_with_cutout(dcc_msg);
+    sender.begin_cutout_sequence(dcc_msg);
 }
 
 void setup() {

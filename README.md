@@ -10,6 +10,17 @@ An Arduino library for encoding and decoding RailCom messages on the RP2040, com
 -   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
 -   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
 
+## Requirements
+
+This library depends on the **Raspberry Pi Pico/RP2040** board support package by Earle Philhower to enable advanced features like PIO.
+
+1.  In the Arduino IDE, go to `File > Preferences`.
+2.  Add the following URL to the "Additional Board Manager URLs" field:
+    ```
+    https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+    ```
+3.  Go to `Tools > Board > Boards Manager...`, search for "pico", and install the **Raspberry Pi Pico/RP2040** package.
+
 ## Installation
 1.  In the Arduino IDE, go to `Sketch > Include Library > Manage Libraries...`
 2.  Search for "RP2040 Railcom" and install.
@@ -43,7 +54,7 @@ void loop() {
     // Simulate a DCC packet for our address
     DCCMessage dcc_msg;
     stateMachine.handleDccPacket(dcc_msg);
-    sender.send_dcc_with_cutout(dcc_msg);
+    sender.begin_cutout_sequence(dcc_msg);
     delay(1000);
 }
 ```

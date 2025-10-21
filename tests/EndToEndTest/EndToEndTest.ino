@@ -33,7 +33,7 @@ void loop() {
 
 void trigger_cutout() {
     DCCMessage dcc_msg((const uint8_t[]){0,0,0}, 3);
-    cs_sender.send_dcc_with_cutout(dcc_msg);
+    cs_sender.begin_cutout_sequence(dcc_msg);
     delay(5);
     decoder_sender.task();
     delay(10);

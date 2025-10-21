@@ -54,7 +54,7 @@ void RailcomSender::pio_init() {
     irq_set_enabled(PIO0_IRQ_0, true);
 }
 
-void RailcomSender::send_dcc_with_cutout(const DCCMessage& dccMsg) {
+void RailcomSender::begin_cutout_sequence(const DCCMessage& dccMsg) {
     uart_write_blocking(_uart, dccMsg.getData(), dccMsg.getLength());
     uart_tx_wait_blocking(_uart);
 
