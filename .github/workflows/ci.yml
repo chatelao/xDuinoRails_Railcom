@@ -33,7 +33,7 @@ jobs:
             - examples/LocomotiveDecoderDummy
             - examples/LocomotiveDecoderNmra
             - tests/DCCMessageTest
-            - tests/EncodingTest
+            - tests/EncodingDecodingTest
             - tests/InCircuitTest
             - tests/TxManagerTest
             - tests/EndToEndTest

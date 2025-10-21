@@ -21,7 +21,8 @@ enum class RailcomID {
     POM = 0, ADR_HIGH = 1, ADR_LOW = 2, EXT = 3, STAT4 = 3,
     INFO = 4, STAT1 = 4, TIME = 5, ERROR = 6, DYN = 7,
     XPOM_0 = 8, STAT2 = 8, XPOM_1 = 9, XPOM_2 = 10, XPOM_3 = 11,
-    CV_AUTO = 12, BLOCK = 13, RERAIL = 14
+    CV_AUTO = 12, BLOCK = 13, RERAIL = 14,
+    SRQ_MSG = 255 // Special ID for ID-less SRQ messages
 };
 
 // Special values for ACK/NACK

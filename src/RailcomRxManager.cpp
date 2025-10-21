@@ -30,6 +30,19 @@ RailcomMessage* RailcomRxManager::readMessage() {
         _accumulator = (_accumulator << 6) | chunk;
         _bits_in_accumulator += 6;
 
+        // Check for 12-bit ID-less SRQ message first
+        if (_bits_in_accumulator == 12) {
+            // As per RCN-217, an SRQ's first bit is 0 for simple, 1 for extended.
+            // This is a reasonable check to distinguish it from a message with an ID.
+            uint8_t potential_id = (_accumulator >> 8) & 0x0F;
+            if (potential_id > 1) { // SRQ's first 4 bits will not form a valid low ID
+                 _adr_msg = {RailcomID::SRQ_MSG, (uint16_t)(_accumulator & 0xFFF)};
+                 _parser_state = ParserState::Idle;
+                 _bits_in_accumulator = 0;
+                 return &_adr_msg;
+            }
+        }
+
         if (_parser_state == ParserState::Idle && _bits_in_accumulator >= 8) {
             uint8_t id_val = (_accumulator >> (_bits_in_accumulator - 4)) & 0x0F;
             _current_id = static_cast<RailcomID>(id_val);

@@ -75,11 +75,14 @@ test(EndToEnd, dynamicData) {
 }
 
 test(EndToEnd, serviceRequest) {
-    decoder_tx_manager.sendServiceRequest(123, false);
+    const uint16_t ACCESSORY_ADDR = 123;
+    decoder_tx_manager.sendServiceRequest(ACCESSORY_ADDR, false);
     trigger_cutout();
+
     RailcomMessage* msg = cs_rx_manager.readMessage();
     assertNotNull(msg);
-    // The parser re-uses the AdrMessage struct for SRQs
-    assertEqual((int)msg->id, (int)RailcomID::ADR_LOW);
-    assertEqual(static_cast<AdrMessage*>(msg)->address, 123);
+    assertEqual((int)msg->id, (int)RailcomID::SRQ_MSG);
+    AdrMessage* srqMsg = static_cast<AdrMessage*>(msg);
+    assertEqual(srqMsg->address & 0x7FF, ACCESSORY_ADDR);
+    assertFalse(srqMsg->address & 0x800);
 }

@@ -3,6 +3,7 @@
 #include "RailcomReceiver.h"
 #include "RailcomTxManager.h"
 #include "RailcomRxManager.h"
+#include "RailcomDebug.h"
 
 RailcomSender sender(uart0, 0, 1);
 RailcomReceiver receiver(uart0, 1);
@@ -14,7 +15,7 @@ void setup() {
     while (!Serial);
     sender.begin();
     receiver.begin();
-    Serial.println("Command Station Example (Refactored)");
+    Serial.println("Command Station Example (with Debug Printer)");
     Serial.println("Enter 'p <addr> <cv>' to send POM Read");
 }
 
@@ -40,7 +41,6 @@ void loop() {
 
     RailcomMessage* msg = rxManager.readMessage();
     if (msg != nullptr) {
-        Serial.print("Received Message! ID: ");
-        Serial.println((int)msg->id);
+        printRailcomMessage(msg, Serial);
     }
 }
