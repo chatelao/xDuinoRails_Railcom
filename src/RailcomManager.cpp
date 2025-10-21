@@ -63,6 +63,16 @@ RailcomMessage* RailcomManager::readMessage() {
             continue;
         }
 
+        if (_bits_in_accumulator == 6 && chunk >= 0) { // Potential SRQ
+            uint16_t potential_srq = (_accumulator << 6) | chunk;
+            if ((potential_srq >> 11) <= 1) { // Check if it's a valid SRQ
+                _adr_msg = {RailcomID::ADR_LOW, potential_srq}; // Re-using ADR message for SRQ
+                _parser_state = ParserState::Idle;
+                _bits_in_accumulator = 0;
+                return &_adr_msg;
+            }
+        }
+
         _accumulator = (_accumulator << 6) | chunk;
         _bits_in_accumulator += 6;
 
