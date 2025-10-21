@@ -25,19 +25,15 @@ private:
     size_t _len;
 };
 
+#include "IRailcomStream.h"
+
 class RailcomSender {
 public:
-    RailcomSender(uart_inst_t* uart, uint txPin, uint rxPin);
+    RailcomSender(IRailcomStream* stream, uint pio_pin);
     void begin();
     void end();
-
-    // Sends a DCC packet and creates a cutout for RailCom messages
     void send_dcc_with_cutout(const DCCMessage& dccMsg);
-
-    // Queues a raw, encoded message to be sent in the next available cutout
     void queue_message(uint8_t channel, const std::vector<uint8_t>& message);
-
-    // This method should be called repeatedly in the main loop to handle sending.
     void task();
 
 private:
@@ -45,35 +41,32 @@ private:
     void pio_init();
     void send_queued_messages();
 
-    uart_inst_t* _uart;
-    uint _txPin;
-    uint _rxPin;
+    IRailcomStream* _stream;
+    uint _pio_pin;
     PIO _pio;
     uint _sm;
+    uint _offset; // PIO program offset
 
 #ifdef AUNIT_H
-public: // Make queues accessible for testing
+public:
 #endif
     std::queue<std::vector<uint8_t>> _ch1_queue;
     std::queue<std::vector<uint8_t>> _ch2_queue;
-
-    volatile bool _send_pending; // Flag set by ISR
+    volatile bool _send_pending;
 };
 
 class RailcomReceiver {
 public:
-    RailcomReceiver(uart_inst_t* uart, uint txPin, uint rxPin);
+    RailcomReceiver(IRailcomStream* stream);
     void begin();
     void end();
     void set_decoder_address(uint16_t address);
 
-    // Reads a complete RailCom response (multiple datagrams)
-    bool read_response(std::vector<uint8_t>& buffer, uint timeout_ms);
+    // Reads raw bytes from the stream into the buffer
+    bool read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms);
 
 private:
-    uart_inst_t* _uart;
-    uint _txPin;
-    uint _rxPin;
+    IRailcomStream* _stream;
     uint16_t _decoder_address;
 };
 

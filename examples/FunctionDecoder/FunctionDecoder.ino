@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include "Railcom.h"
 #include "RailcomManager.h"
+#include "HardwareUartStream.h"
 
 const uint16_t DECODER_ADDRESS = 1234;
 
-RailcomSender sender(uart0, 0, 1);
-RailcomReceiver receiver(uart0, 0, 1);
+HardwareUartStream stream(uart0, 0, 1);
+RailcomSender sender(&stream, 0);
+RailcomReceiver receiver(&stream);
 RailcomManager manager(sender, receiver);
 
 unsigned long lastDccPacketTime = 0;
@@ -24,17 +26,12 @@ void setup() {
 void loop() {
     sender.task();
 
-    // Simulate receiving a DCC packet every 3 seconds
     if (millis() - lastDccPacketTime > 3000) {
         lastDccPacketTime = millis();
 
-        // 1. Queue the DYN message with the current fuel level
-        Serial.print("Queuing DYN message: Fuel Level = ");
-        Serial.println(fuelLevel);
-        manager.sendDynamicData(5, fuelLevel); // Subindex 5 for "container 1"
+        manager.sendDynamicData(5, fuelLevel);
         if (fuelLevel > 0) fuelLevel--;
 
-        // 2. Send the DCC packet that triggers the cutout
         uint8_t dcc_data[] = { (uint8_t)(DECODER_ADDRESS >> 8), (uint8_t)DECODER_ADDRESS, 0 };
         DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
         sender.send_dcc_with_cutout(dcc_msg);
