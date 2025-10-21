@@ -7,27 +7,49 @@ void DecoderStateMachine::handleDccPacket(const DCCMessage& dccMsg) {
     const uint8_t* data = dccMsg.getData();
     size_t len = dccMsg.getLength();
 
-    // This is a simplified DCC parser. A real implementation would be more robust.
+    // Simplified DCC address parsing
     uint16_t msg_address = 0;
     if (len >= 2) {
-        msg_address = (data[0] << 8) | data[1];
+        // Basic Accessory Decoders have a different address format
+        if (_type == DecoderType::ACCESSORY) {
+            // Address is encoded in the first and second bytes
+            msg_address = 1 + (((~data[0]) & 0x3F) << 2) | ((data[1] >> 1) & 0x03);
+        } else {
+            msg_address = (data[0] << 8) | data[1];
+        }
     }
 
-    if (_type == DecoderType::LOCOMOTIVE && msg_address == _address) {
-        _last_addressed_time = millis();
+    if (msg_address != _address) {
+        return; // Not for us
+    }
 
-        // Check for POM read command (simplified check)
-        if (len >= 4 && (data[2] & 0b11101100) == 0b11101100) {
-            uint8_t cv = data[3];
-            uint8_t value = 42; // Dummy value
+    // --- Packet is for this decoder, decide on a response ---
+    _last_addressed_time = millis();
+
+    if (_type == DecoderType::LOCOMOTIVE) {
+        if (len >= 4 && (data[2] & 0b11101100) == 0b11101100) { // POM Read
+            uint8_t value = 42; // Dummy value for the requested CV
             _txManager.sendPomResponse(value);
         } else {
-            // Otherwise, just broadcast address
             _txManager.sendAddress(_address);
         }
     }
-    else if (_type == DecoderType::ACCESSORY && msg_address == _address) {
-        // For an accessory, just send a status update
-        _txManager.sendStatus1(0); // Dummy status
+    else if (_type == DecoderType::ACCESSORY) {
+        if (len >= 2) {
+            bool activate = (data[1] >> 3) & 1;
+            uint8_t output = data[1] & 0x03;
+
+            // For a STAT1 message, the payload is an 8-bit status.
+            // We can simulate the state of the outputs.
+            // Let's say bit 0 is output 0, bit 1 is output 1, etc.
+            static uint8_t accessory_state = 0;
+            if (activate) {
+                accessory_state |= (1 << output);
+            } else {
+                accessory_state &= ~(1 << output);
+            }
+
+            _txManager.sendStatus1(accessory_state);
+        }
     }
 }

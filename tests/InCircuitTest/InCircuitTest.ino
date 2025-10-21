@@ -1,21 +1,21 @@
 #include <Arduino.h>
-#include "Railcom.h"
-#include "RailcomManager.h"
-#include "HardwareUartStream.h"
+#include "RailcomSender.h"
+#include "RailcomReceiver.h"
+#include "RailcomTxManager.h"
+#include "RailcomRxManager.h"
 
 // Command Station on UART0
-HardwareUartStream cs_stream(uart0, 0, 1);
-RailcomSender cs_sender(&cs_stream, 0);
-RailcomReceiver cs_receiver(&cs_stream);
-RailcomManager cs_manager(cs_sender, cs_receiver);
+RailcomSender cs_sender(uart0, 0, 1);
+RailcomReceiver cs_receiver(uart0, 1);
+RailcomTxManager cs_tx_manager(cs_sender);
+RailcomRxManager cs_rx_manager(cs_receiver);
 
 // Locomotive Decoder on UART1
 const uint16_t LOCO_ADDRESS = 1234;
 const uint8_t CV_VALUE = 42;
-HardwareUartStream loco_stream(uart1, 4, 5);
-RailcomSender loco_sender(&loco_stream, 4);
-RailcomReceiver loco_receiver(&loco_stream);
-RailcomManager loco_manager(loco_sender, loco_receiver);
+RailcomSender loco_sender(uart1, 4, 5);
+RailcomReceiver loco_receiver(uart1, 5);
+RailcomTxManager loco_tx_manager(loco_sender);
 
 void setup() {
     Serial.begin(115200);
@@ -26,29 +26,23 @@ void setup() {
     loco_sender.begin();
     loco_receiver.begin();
 
-    Serial.println("In-Circuit Test: POM Read (Refactored)");
+    Serial.println("In-Circuit Test (Refactored)");
 
-    loco_manager.sendPomResponse(CV_VALUE);
+    loco_tx_manager.sendPomResponse(CV_VALUE);
 
-    uint8_t dcc_data[] = { (uint8_t)(LOCO_ADDRESS >> 8), (uint8_t)LOCO_ADDRESS, 0};
-    DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
+    DCCMessage dcc_msg;
     cs_sender.send_dcc_with_cutout(dcc_msg);
 
     delay(1);
     loco_sender.task();
     delay(10);
 
-    RailcomMessage* msg = cs_manager.readMessage();
+    RailcomMessage* msg = cs_rx_manager.readMessage();
 
-    if (msg != nullptr && msg->id == RailcomID::POM) {
-        PomMessage* pom_msg = static_cast<PomMessage*>(msg);
-        if (pom_msg->cvValue == CV_VALUE) {
-            Serial.println("SUCCESS: In-circuit test passed!");
-        } else {
-            Serial.println("FAILURE: Incorrect CV value.");
-        }
+    if (msg && msg->id == RailcomID::POM && static_cast<PomMessage*>(msg)->cvValue == CV_VALUE) {
+        Serial.println("SUCCESS: In-circuit test passed!");
     } else {
-        Serial.println("FAILURE: Did not receive a valid POM response.");
+        Serial.println("FAILURE: Did not receive correct POM response.");
     }
 }
 
