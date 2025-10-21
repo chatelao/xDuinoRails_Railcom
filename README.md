@@ -1,67 +1,52 @@
 # RP2040 RailCom Library
 
-An Arduino library for encoding and decoding RailCom messages from and to an RP2040 UART, compliant with the RCN-217 specification.
+An Arduino library for encoding and decoding RailCom messages on the RP2040, compliant with the RCN-217 specification.
 
 ## Features
 
--   **High-Level RCN-217 API:** A `RailcomManager` class that simplifies the creation and sending of standard RailCom messages for both vehicle and accessory decoders.
--   **RailCom Encoding and Decoding:** Handles the 4-out-of-8 encoding and decoding required for robust communication.
--   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise cutout required for RailCom.
--   **Comprehensive Examples:** Includes examples for locomotive, accessory, and function decoders, as well as a command station sketch for testing.
+-   **High-Level API:** `RailcomTxManager` and `RailcomRxManager` classes simplify creating, sending, and parsing RCN-217 messages.
+-   **Robust Sending:** Uses a non-blocking, ISR-driven message queue to ensure correct timing.
+-   **Decoder State Machine:** Includes a `DecoderStateMachine` class to demonstrate realistic response logic.
+-   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
+-   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
 
 ## Installation
-
-1.  Download the latest release from the [GitHub repository](https://github.com/Jules/rp2040-railcom).
-2.  In the Arduino IDE, go to `Sketch > Include Library > Add .ZIP Library...` and select the downloaded file.
+1.  In the Arduino IDE, go to `Sketch > Include Library > Manage Libraries...`
+2.  Search for "RP2040 Railcom" and install.
+3.  Also install the required dependencies: `AUnit` and `NmraDcc`.
 
 ## Getting Started
 
-The core of the library is the `RailcomManager` class. It provides a high-level interface for sending RCN-217 compliant messages.
+The library is split into a transmitter (`RailcomTxManager`) and receiver (`RailcomRxManager`).
 
 ### Example: Locomotive Decoder
 
-This example shows how a simple locomotive decoder would broadcast its address.
-
 ```cpp
 #include <Arduino.h>
-#include "Railcom.h"
-#include "RailcomManager.h"
-#include "HardwareUartStream.h"
+#include "RailcomSender.h"
+#include "RailcomTxManager.h"
+#include "DecoderStateMachine.h"
 
-const uint16_t LOCOMOTIVE_ADDRESS = 4098;
+const uint16_t LOCO_ADDRESS = 4098;
 
-// Use a hardware UART stream for communication
-HardwareUartStream stream(uart0, 0, 1);
-RailcomSender sender(&stream, 0); // PIO pin is TX pin
-RailcomReceiver receiver(&stream);
-RailcomManager manager(sender, receiver);
+RailcomSender sender(uart0, 0, 1); // UART, TX Pin, PIO Pin
+RailcomTxManager txManager(sender);
+DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
 
 void setup() {
-  sender.begin();
-  receiver.begin();
+    sender.begin();
 }
 
 void loop() {
-  // A real decoder would send this in response to a DCC packet.
-  manager.sendAddress(LOCOMOTIVE_ADDRESS);
-  delay(1000);
+    sender.task(); // Must be called repeatedly
+
+    // Simulate a DCC packet for our address
+    DCCMessage dcc_msg;
+    stateMachine.handleDccPacket(dcc_msg);
+    sender.send_dcc_with_cutout(dcc_msg);
+    delay(1000);
 }
 ```
 
-For more detailed examples, see the `examples` folder:
-- **LocomotiveDecoder:** Demonstrates address broadcasting and responding to POM requests.
-- **AccessoryDecoder:** Shows how to report status and send Service Requests (SRQ).
-- **FunctionDecoder:** Simulates reporting dynamic data like fuel levels.
-- **CommandStation:** An interactive sketch to test your decoders.
-
 ## API Reference
-
-For a detailed API reference and explanation of the high-level functions, please see the **[RCN-217 API Documentation](docs/RCN-217_API.md)**.
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the MIT License.
+For a detailed API reference, please see the **[API Documentation](docs/API_Reference.md)**.
