@@ -3,7 +3,7 @@
 
 #include "Railcom.h"
 #include "RailcomReceiver.h"
-#include "RailcomEncoding.h"
+#include "RailcomDecoding.h"
 
 class RailcomRxManager {
 public:
