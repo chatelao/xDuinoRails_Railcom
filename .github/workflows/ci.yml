@@ -32,3 +32,4 @@ jobs:
             - tests/InCircuitTest
             - tests/TxManagerTest
             - tests/EndToEndTest
+            - tests/ComprehensiveTest

@@ -1,55 +1,51 @@
 #include "DecoderStateMachine.h"
+#include <NmraDcc.h> // Use NmraDcc's definitions for clarity
+
+// Simple CV register simulation
+static uint8_t cv_register[256];
 
 DecoderStateMachine::DecoderStateMachine(RailcomTxManager& txManager, DecoderType type, uint16_t address)
-    : _txManager(txManager), _type(type), _address(address), _last_addressed_time(0) {}
+    : _txManager(txManager), _type(type), _address(address), _last_addressed_time(0) {
+        // Initialize some dummy CVs
+        cv_register[8] = 151; // Manufacturer ID
+    }
 
 void DecoderStateMachine::handleDccPacket(const DCCMessage& dccMsg) {
-    const uint8_t* data = dccMsg.getData();
-    size_t len = dccMsg.getLength();
+    NmraDcc dccPacket;
+    dccPacket.setPacket(dccMsg.getData(), dccMsg.getLength());
 
-    // Simplified DCC address parsing
-    uint16_t msg_address = 0;
-    if (len >= 2) {
-        // Basic Accessory Decoders have a different address format
-        if (_type == DecoderType::ACCESSORY) {
-            // Address is encoded in the first and second bytes
-            msg_address = 1 + (((~data[0]) & 0x3F) << 2) | ((data[1] >> 1) & 0x03);
-        } else {
-            msg_address = (data[0] << 8) | data[1];
-        }
+    bool for_us = false;
+    if (dccPacket.getAddress() == _address) {
+        for_us = true;
     }
 
-    if (msg_address != _address) {
-        return; // Not for us
+    // Per RCN-217, decoders should also respond after any broadcast or other MOB packet
+    if (_type == DecoderType::LOCOMOTIVE && dccPacket.isMobileDecoderPacket()) {
+        for_us = true;
     }
 
-    // --- Packet is for this decoder, decide on a response ---
+    if (!for_us) return;
+
     _last_addressed_time = millis();
 
     if (_type == DecoderType::LOCOMOTIVE) {
-        if (len >= 4 && (data[2] & 0b11101100) == 0b11101100) { // POM Read
-            uint8_t value = 42; // Dummy value for the requested CV
-            _txManager.sendPomResponse(value);
-        } else {
+        // Check for specific commands that require a specific response
+        if (dccPacket.isPomReadCv()) {
+            uint16_t cv = dccPacket.getPomCv();
+            if (cv < 256) {
+                _txManager.sendPomResponse(cv_register[cv]);
+            }
+        } else if (dccPacket.isPomWriteCv()) {
+            // Per RCN-217, a POM write is just acknowledged by an address broadcast
+            _txManager.sendAddress(_address);
+        }
+        else {
+            // Default response for any other packet is address broadcast
             _txManager.sendAddress(_address);
         }
     }
     else if (_type == DecoderType::ACCESSORY) {
-        if (len >= 2) {
-            bool activate = (data[1] >> 3) & 1;
-            uint8_t output = data[1] & 0x03;
-
-            // For a STAT1 message, the payload is an 8-bit status.
-            // We can simulate the state of the outputs.
-            // Let's say bit 0 is output 0, bit 1 is output 1, etc.
-            static uint8_t accessory_state = 0;
-            if (activate) {
-                accessory_state |= (1 << output);
-            } else {
-                accessory_state &= ~(1 << output);
-            }
-
-            _txManager.sendStatus1(accessory_state);
-        }
+        // Default response is to send status
+        _txManager.sendStatus1(0); // Dummy status
     }
 }
