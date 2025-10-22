@@ -1,19 +1,15 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "RailcomRx.h"
-#include "RailcomTxManager.h"
-#include "RailcomRxManager.h"
 
-RailcomTx sender(uart0, 0, 1);
-RailcomRx receiver(uart0, 1);
-RailcomTxManager txManager(sender);
-RailcomRxManager rxManager(receiver);
+RailcomTx railcomTx(uart0, 0, 1);
+RailcomRx railcomRx(uart0, 1);
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
-    sender.begin();
-    receiver.begin();
+    railcomTx.begin();
+    railcomRx.begin();
     Serial.println("Command Station Example (Refactored)");
     Serial.println("Enter 'p <addr> <cv>' to send POM Read");
 }
@@ -25,20 +21,20 @@ void parseCommand(String cmd) {
 
         uint8_t dcc_data[] = { (uint8_t)(addr >> 8), (uint8_t)addr, 0b11101100, (uint8_t)cv, 0};
         DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
-        sender.send_dcc_with_cutout(dcc_msg);
+        railcomTx.send_dcc_with_cutout(dcc_msg);
     }
 }
 
 void loop() {
-    sender.task();
+    railcomTx.task();
 
     if (Serial.available() > 0) {
-        String input = Serial.readStringUntil('\\n');
+        String input = Serial.readStringUntil('\n');
         input.trim();
         parseCommand(input);
     }
 
-    RailcomMessage* msg = rxManager.readMessage();
+    RailcomMessage* msg = railcomRx.readMessage();
     if (msg != nullptr) {
         Serial.print("Received Message! ID: ");
         Serial.println((int)msg->id);

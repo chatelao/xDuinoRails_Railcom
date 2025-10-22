@@ -1,13 +1,13 @@
 # API Reference
 
-This document provides a detailed overview of the high-level classes used to send and receive RCN-217 compliant RailCom messages.
+This document provides a detailed overview of the classes used to send and receive RCN-217 compliant RailCom messages.
 
-## `RailcomTxManager` Class
+## `RailcomTx` Class
 
-This class provides the high-level interface for queueing RailCom messages to be sent.
+This class provides the interface for queueing and sending RailCom messages.
 
-### `RailcomTxManager(RailcomTx& sender)`
-Constructs a new manager. It requires a reference to a low-level `RailcomTx` instance.
+### `RailcomTx(uart_inst_t* uart, uint tx_pin, uint pio_pin)`
+Constructs a new transmitter.
 
 ### `sendPomResponse(uint8_t cvValue)`
 Queues a `POM` (ID 0) response, typically after a POM read request.
@@ -20,12 +20,12 @@ Queues a `DYN` (ID 7) message to report dynamic data.
 
 ---
 
-## `RailcomRxManager` Class
+## `RailcomRx` Class
 
-This class provides the high-level interface for parsing incoming RailCom byte streams.
+This class provides the interface for parsing incoming RailCom byte streams.
 
-### `RailcomRxManager(RailcomRx& receiver)`
-Constructs a new manager. It requires a reference to a low-level `RailcomRx` instance.
+### `RailcomRx(uart_inst_t* uart, uint rx_pin)`
+Constructs a new receiver.
 
 ### `RailcomMessage* readMessage()`
 The main parser function. This should be called repeatedly in your `loop()`. It processes incoming bytes and returns a pointer to a `RailcomMessage` struct if a complete message has been successfully parsed. Returns `nullptr` if no message is ready.
@@ -33,7 +33,7 @@ The main parser function. This should be called repeatedly in your `loop()`. It 
 You can then `static_cast` the result to the appropriate message type based on the `id` field.
 
 ```cpp
-RailcomMessage* msg = rxManager.readMessage();
+RailcomMessage* msg = railcomRx.readMessage();
 if (msg != nullptr) {
     if (msg->id == RailcomID::POM) {
         PomMessage* pomMsg = static_cast<PomMessage*>(msg);

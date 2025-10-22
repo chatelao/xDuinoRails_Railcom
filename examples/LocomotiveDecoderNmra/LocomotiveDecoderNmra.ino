@@ -1,14 +1,12 @@
 #include <Arduino.h>
 #include <NmraDcc.h>
 #include "RailcomTx.h"
-#include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 
-RailcomTx sender(uart0, 0, 1);
-RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
+RailcomTx railcomTx(uart0, 0, 1);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
 NmraDcc dcc;
 
 void notifyDccSpeedPacket(uint16_t address, DCC_ADDR_TYPE addr_type, uint8_t speed, DCC_DIRECTION forward) {
@@ -19,7 +17,7 @@ void notifyDccSpeedPacket(uint16_t address, DCC_ADDR_TYPE addr_type, uint8_t spe
     stateMachine.handleDccPacket(dcc_msg);
 
     // Trigger the cutout so the message can be sent
-    sender.send_dcc_with_cutout(dcc_msg);
+    railcomTx.send_dcc_with_cutout(dcc_msg);
 }
 
 void setup() {
@@ -28,12 +26,12 @@ void setup() {
 
     dcc.begin(INPUT_PIN, 0);
     dcc.setSpeedPacketHandler(notifyDccSpeedPacket, true);
-    sender.begin();
+    railcomTx.begin();
 
     Serial.println("Locomotive Decoder (NMRA) Example - State Machine Version");
 }
 
 void loop() {
     dcc.process();
-    sender.task();
+    railcomTx.task();
 }

@@ -1,26 +1,24 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
-#include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t DECODER_ADDRESS = 1234;
 
-RailcomTx sender(uart0, 0, 1);
-RailcomTxManager txManager(sender);
+RailcomTx railcomTx(uart0, 0, 1);
 // Note: We'll re-use the LOCOMOTIVE type for the function decoder
-DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, DECODER_ADDRESS);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS);
 
 unsigned long lastDccPacketTime = 0;
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
-    sender.begin();
+    railcomTx.begin();
     Serial.println("Function Decoder (Dummy) Example");
 }
 
 void loop() {
-    sender.task();
+    railcomTx.task();
 
     if (millis() - lastDccPacketTime > 3000) {
         lastDccPacketTime = millis();
@@ -32,6 +30,6 @@ void loop() {
         // Let the state machine decide what to queue (it will queue an ADR broadcast)
         stateMachine.handleDccPacket(dcc_msg);
 
-        sender.send_dcc_with_cutout(dcc_msg);
+        railcomTx.send_dcc_with_cutout(dcc_msg);
     }
 }

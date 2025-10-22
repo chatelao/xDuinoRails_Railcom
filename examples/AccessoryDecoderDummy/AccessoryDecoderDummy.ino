@@ -1,13 +1,11 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
-#include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t ACCESSORY_ADDRESS = 100;
 
-RailcomTx sender(uart0, 0, 1);
-RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::ACCESSORY, ACCESSORY_ADDRESS);
+RailcomTx railcomTx(uart0, 0, 1);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::ACCESSORY, ACCESSORY_ADDRESS);
 
 unsigned long lastDccPacketTime = 0;
 int command_step = 0;
@@ -15,12 +13,12 @@ int command_step = 0;
 void setup() {
     Serial.begin(115200);
     while (!Serial);
-    sender.begin();
+    railcomTx.begin();
     Serial.println("Accessory Decoder (Dummy) Example - State Machine v2");
 }
 
 void loop() {
-    sender.task();
+    railcomTx.task();
 
     if (millis() - lastDccPacketTime > 2000) {
         lastDccPacketTime = millis();
@@ -53,6 +51,6 @@ void loop() {
 
         DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
         stateMachine.handleDccPacket(dcc_msg);
-        sender.send_dcc_with_cutout(dcc_msg);
+        railcomTx.send_dcc_with_cutout(dcc_msg);
     }
 }

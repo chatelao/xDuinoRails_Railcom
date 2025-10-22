@@ -1,43 +1,38 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "RailcomRx.h"
-#include "RailcomTxManager.h"
-#include "RailcomRxManager.h"
 
 // Command Station on UART0
-RailcomTx cs_sender(uart0, 0, 1);
-RailcomRx cs_receiver(uart0, 1);
-RailcomTxManager cs_tx_manager(cs_sender);
-RailcomRxManager cs_rx_manager(cs_receiver);
+RailcomTx cs_railcomTx(uart0, 0, 1);
+RailcomRx cs_railcomRx(uart0, 1);
 
 // Locomotive Decoder on UART1
 const uint16_t LOCO_ADDRESS = 1234;
 const uint8_t CV_VALUE = 42;
-RailcomTx loco_sender(uart1, 4, 5);
-RailcomRx loco_receiver(uart1, 5);
-RailcomTxManager loco_tx_manager(loco_sender);
+RailcomTx loco_railcomTx(uart1, 4, 5);
+RailcomRx loco_railcomRx(uart1, 5);
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    cs_sender.begin();
-    cs_receiver.begin();
-    loco_sender.begin();
-    loco_receiver.begin();
+    cs_railcomTx.begin();
+    cs_railcomRx.begin();
+    loco_railcomTx.begin();
+    loco_railcomRx.begin();
 
     Serial.println("In-Circuit Test (Refactored)");
 
-    loco_tx_manager.sendPomResponse(CV_VALUE);
+    loco_railcomTx.sendPomResponse(CV_VALUE);
 
     DCCMessage dcc_msg;
-    cs_sender.send_dcc_with_cutout(dcc_msg);
+    cs_railcomTx.send_dcc_with_cutout(dcc_msg);
 
     delay(1);
-    loco_sender.task();
+    loco_railcomTx.task();
     delay(10);
 
-    RailcomMessage* msg = cs_rx_manager.readMessage();
+    RailcomMessage* msg = cs_railcomRx.readMessage();
 
     if (msg && msg->id == RailcomID::POM && static_cast<PomMessage*>(msg)->cvValue == CV_VALUE) {
         Serial.println("SUCCESS: In-circuit test passed!");
@@ -47,6 +42,6 @@ void setup() {
 }
 
 void loop() {
-    cs_sender.task();
-    loco_sender.task();
+    cs_railcomTx.task();
+    loco_railcomTx.task();
 }

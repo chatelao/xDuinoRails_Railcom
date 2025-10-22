@@ -4,7 +4,7 @@ An Arduino library for encoding and decoding RailCom messages on the RP2040, com
 
 ## Features
 
--   **High-Level API:** `RailcomTxManager` and `RailcomRxManager` classes simplify creating, sending, and parsing RCN-217 messages.
+-   **High-Level API:** The `RailcomTx` and `RailcomRx` classes simplify creating, sending, and parsing RCN-217 messages.
 -   **Robust Sending:** Uses a non-blocking, ISR-driven message queue to ensure correct timing.
 -   **Decoder State Machine:** Includes a `DecoderStateMachine` class to demonstrate realistic response logic.
 -   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
@@ -21,33 +21,31 @@ The `LocomotiveDecoderNeopixel` example requires the [Adafruit NeoPixel](https:/
 
 ## Getting Started
 
-The library is split into a transmitter (`RailcomTxManager`) and receiver (`RailcomRxManager`).
+The library is split into a transmitter (`RailcomTx`) and receiver (`RailcomRx`).
 
 ### Example: Locomotive Decoder
 
 ```cpp
 #include <Arduino.h>
 #include "RailcomTx.h"
-#include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCO_ADDRESS = 4098;
 
-RailcomTx sender(uart0, 0, 1); // UART, TX Pin, PIO Pin
-RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
+RailcomTx railcomTx(uart0, 0, 1); // UART, TX Pin, PIO Pin
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
 
 void setup() {
-    sender.begin();
+    railcomTx.begin();
 }
 
 void loop() {
-    sender.task(); // Must be called repeatedly
+    railcomTx.task(); // Must be called repeatedly
 
     // Simulate a DCC packet for our address
     DCCMessage dcc_msg;
     stateMachine.handleDccPacket(dcc_msg);
-    sender.send_dcc_with_cutout(dcc_msg);
+    railcomTx.send_dcc_with_cutout(dcc_msg);
     delay(1000);
 }
 ```

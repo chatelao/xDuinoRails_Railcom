@@ -1,6 +1,5 @@
 #include <AUnit.h>
 #include "RailcomTx.h"
-#include "RailcomTxManager.h"
 
 // Mock Sender to inspect the queue
 class TestableRailcomTx : public RailcomTx {
@@ -11,9 +10,8 @@ public:
 
 test(TxManager, queuePomResponse) {
     TestableRailcomTx sender;
-    RailcomTxManager txManager(sender);
 
-    txManager.sendPomResponse(123);
+    sender.sendPomResponse(123);
 
     assertFalse(sender._ch2_queue.empty());
     std::vector<uint8_t> msg = sender._ch2_queue.front();

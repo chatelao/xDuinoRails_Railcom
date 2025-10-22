@@ -1,6 +1,5 @@
 #include <AUnit.h>
 #include "RailcomTx.h"
-#include "RailcomTxManager.h"
 
 // Mock RailcomTx to capture queued messages
 class MockRailcomTx : public RailcomTx {
@@ -18,9 +17,8 @@ public:
 
 test(Rcn218, SendDecoderUnique) {
     MockRailcomTx mockSender;
-    RailcomTxManager txManager(mockSender);
 
-    txManager.sendDecoderUnique(0x0123, 0x456789AB);
+    mockSender.sendDecoderUnique(0x0123, 0x456789AB);
 
     // Expected encoded data for DECODER_UNIQUE
     // ID=15 (0xF), Manuf=0x0123, Prod=0x456789AB
@@ -33,9 +31,8 @@ test(Rcn218, SendDecoderUnique) {
 
 test(Rcn218, SendDecoderState) {
     MockRailcomTx mockSender;
-    RailcomTxManager txManager(mockSender);
 
-    txManager.sendDecoderState(0xAB, 0x1234, 0x5678);
+    mockSender.sendDecoderState(0xAB, 0x1234, 0x5678);
 
     // Expected encoded data for DECODER_STATE
     // ID=13 (0xD), Flags=0xAB, Count=0x1234, Caps=0x5678
