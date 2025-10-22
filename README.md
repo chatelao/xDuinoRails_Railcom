@@ -10,6 +10,10 @@ An Arduino library for encoding and decoding RailCom messages on the RP2040, com
 -   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
 -   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
 
+## Neopixel Example
+
+The `LocomotiveDecoderNeopixel` example requires the [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) library to be installed. You can install it through the Arduino Library Manager.
+
 ## Installation
 1.  In the Arduino IDE, go to `Sketch > Include Library > Manage Libraries...`
 2.  Search for "RP2040 Railcom" and install.
