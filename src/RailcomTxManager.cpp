@@ -1,6 +1,6 @@
 #include "RailcomTxManager.h"
 
-RailcomTxManager::RailcomTxManager(RailcomSender& sender)
+RailcomTxManager::RailcomTxManager(RailcomTx& sender)
     : _sender(sender), _long_address_alternator(false) {}
 
 void RailcomTxManager::sendDatagram(uint8_t channel, RailcomID id, uint32_t payload, uint8_t payloadBits) {

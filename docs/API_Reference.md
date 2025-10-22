@@ -6,8 +6,8 @@ This document provides a detailed overview of the high-level classes used to sen
 
 This class provides the high-level interface for queueing RailCom messages to be sent.
 
-### `RailcomTxManager(RailcomSender& sender)`
-Constructs a new manager. It requires a reference to a low-level `RailcomSender` instance.
+### `RailcomTxManager(RailcomTx& sender)`
+Constructs a new manager. It requires a reference to a low-level `RailcomTx` instance.
 
 ### `sendPomResponse(uint8_t cvValue)`
 Queues a `POM` (ID 0) response, typically after a POM read request.
@@ -24,8 +24,8 @@ Queues a `DYN` (ID 7) message to report dynamic data.
 
 This class provides the high-level interface for parsing incoming RailCom byte streams.
 
-### `RailcomRxManager(RailcomReceiver& receiver)`
-Constructs a new manager. It requires a reference to a low-level `RailcomReceiver` instance.
+### `RailcomRxManager(RailcomRx& receiver)`
+Constructs a new manager. It requires a reference to a low-level `RailcomRx` instance.
 
 ### `RailcomMessage* readMessage()`
 The main parser function. This should be called repeatedly in your `loop()`. It processes incoming bytes and returns a pointer to a `RailcomMessage` struct if a complete message has been successfully parsed. Returns `nullptr` if no message is ready.

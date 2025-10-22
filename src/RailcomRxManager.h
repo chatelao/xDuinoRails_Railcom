@@ -2,12 +2,12 @@
 #define RAILCOM_RX_MANAGER_H
 
 #include "Railcom.h"
-#include "RailcomReceiver.h"
+#include "RailcomRx.h"
 #include "RailcomEncoding.h"
 
 class RailcomRxManager {
 public:
-    RailcomRxManager(RailcomReceiver& receiver);
+    RailcomRxManager(RailcomRx& receiver);
 
     // Main parser function. Call this repeatedly.
     // Returns a pointer to a message struct if a message has been successfully parsed.
@@ -15,7 +15,7 @@ public:
     RailcomMessage* readMessage();
 
 private:
-    RailcomReceiver& _receiver;
+    RailcomRx& _receiver;
 
     // Parser state
     enum class ParserState { Idle, Reading };

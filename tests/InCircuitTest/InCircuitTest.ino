@@ -1,20 +1,20 @@
 #include <Arduino.h>
-#include "RailcomSender.h"
-#include "RailcomReceiver.h"
+#include "RailcomTx.h"
+#include "RailcomRx.h"
 #include "RailcomTxManager.h"
 #include "RailcomRxManager.h"
 
 // Command Station on UART0
-RailcomSender cs_sender(uart0, 0, 1);
-RailcomReceiver cs_receiver(uart0, 1);
+RailcomTx cs_sender(uart0, 0, 1);
+RailcomRx cs_receiver(uart0, 1);
 RailcomTxManager cs_tx_manager(cs_sender);
 RailcomRxManager cs_rx_manager(cs_receiver);
 
 // Locomotive Decoder on UART1
 const uint16_t LOCO_ADDRESS = 1234;
 const uint8_t CV_VALUE = 42;
-RailcomSender loco_sender(uart1, 4, 5);
-RailcomReceiver loco_receiver(uart1, 5);
+RailcomTx loco_sender(uart1, 4, 5);
+RailcomRx loco_receiver(uart1, 5);
 RailcomTxManager loco_tx_manager(loco_sender);
 
 void setup() {

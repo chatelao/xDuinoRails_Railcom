@@ -1,11 +1,11 @@
 #include <AUnit.h>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 
-// Mock RailcomSender to capture queued messages
-class MockRailcomSender : public RailcomSender {
+// Mock RailcomTx to capture queued messages
+class MockRailcomTx : public RailcomTx {
 public:
-    MockRailcomSender() : RailcomSender(nullptr, 0, 0) {}
+    MockRailcomTx() : RailcomTx(nullptr, 0, 0) {}
 
     void queue_message(uint8_t channel, const std::vector<uint8_t>& data) override {
         last_channel = channel;
@@ -17,7 +17,7 @@ public:
 };
 
 test(Rcn218, SendDecoderUnique) {
-    MockRailcomSender mockSender;
+    MockRailcomTx mockSender;
     RailcomTxManager txManager(mockSender);
 
     txManager.sendDecoderUnique(0x0123, 0x456789AB);
@@ -32,7 +32,7 @@ test(Rcn218, SendDecoderUnique) {
 }
 
 test(Rcn218, SendDecoderState) {
-    MockRailcomSender mockSender;
+    MockRailcomTx mockSender;
     RailcomTxManager txManager(mockSender);
 
     txManager.sendDecoderState(0xAB, 0x1234, 0x5678);

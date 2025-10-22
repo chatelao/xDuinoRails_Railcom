@@ -2,12 +2,12 @@
 #define RAILCOM_TX_MANAGER_H
 
 #include "Railcom.h"
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomEncoding.h"
 
 class RailcomTxManager {
 public:
-    RailcomTxManager(RailcomSender& sender);
+    RailcomTxManager(RailcomTx& sender);
 
     // --- Vehicle Decoder (MOB) Functions ---
     void sendPomResponse(uint8_t cvValue);
@@ -30,7 +30,7 @@ public:
     void sendNack();
 
 private:
-    RailcomSender& _sender;
+    RailcomTx& _sender;
     bool _long_address_alternator;
 
     void sendDatagram(uint8_t channel, RailcomID id, uint32_t payload, uint8_t payloadBits);

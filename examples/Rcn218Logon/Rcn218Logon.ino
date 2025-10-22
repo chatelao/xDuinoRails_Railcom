@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
@@ -8,7 +8,7 @@ const uint16_t DECODER_ADDRESS = 4098;
 const uint16_t MANUFACTURER_ID = 0x0123;
 const uint32_t PRODUCT_ID = 0x456789AB;
 
-RailcomSender sender(uart0, 0, 1);
+RailcomTx sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
 DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
 

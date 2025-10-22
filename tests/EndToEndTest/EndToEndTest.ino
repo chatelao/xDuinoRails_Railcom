@@ -1,18 +1,18 @@
 #include <AUnit.h>
-#include "RailcomSender.h"
-#include "RailcomReceiver.h"
+#include "RailcomTx.h"
+#include "RailcomRx.h"
 #include "RailcomTxManager.h"
 #include "RailcomRxManager.h"
 
 // --- Test Environment Setup ---
-RailcomSender cs_sender(uart0, 0, 1);
-RailcomReceiver cs_receiver(uart0, 1);
+RailcomTx cs_sender(uart0, 0, 1);
+RailcomRx cs_receiver(uart0, 1);
 RailcomTxManager cs_tx_manager(cs_sender);
 RailcomRxManager cs_rx_manager(cs_receiver);
 
 const uint16_t DECODER_ADDRESS = 4098;
-RailcomSender decoder_sender(uart1, 4, 5);
-RailcomReceiver decoder_receiver(uart1, 5);
+RailcomTx decoder_sender(uart1, 4, 5);
+RailcomRx decoder_receiver(uart1, 5);
 RailcomTxManager decoder_tx_manager(decoder_sender);
 // Note: We don't need a decoder_rx_manager for these tests
 

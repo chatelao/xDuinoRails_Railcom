@@ -1,11 +1,11 @@
 #include <Arduino.h>
-#include "RailcomSender.h"
-#include "RailcomReceiver.h"
+#include "RailcomTx.h"
+#include "RailcomRx.h"
 #include "RailcomTxManager.h"
 #include "RailcomRxManager.h"
 
-RailcomSender sender(uart0, 0, 1);
-RailcomReceiver receiver(uart0, 1);
+RailcomTx sender(uart0, 0, 1);
+RailcomRx receiver(uart0, 1);
 RailcomTxManager txManager(sender);
 RailcomRxManager rxManager(receiver);
 

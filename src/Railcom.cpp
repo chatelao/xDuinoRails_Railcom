@@ -11,8 +11,8 @@ const uint8_t* DCCMessage::getData() const { return _data; }
 size_t DCCMessage::getLength() const { return _len; }
 
 
-// --- RailcomSender Implementation ---
-RailcomSender* pio_sender_instance = nullptr;
+// --- RailcomTx Implementation ---
+RailcomTx* pio_sender_instance = nullptr;
 
 void railcom_pio_irq_handler() {
     if (pio_sender_instance && pio_interrupt_get(pio_sender_instance->_pio, 0)) {
@@ -22,18 +22,18 @@ void railcom_pio_irq_handler() {
     }
 }
 
-RailcomSender::RailcomSender(uart_inst_t* uart, uint tx_pin, uint pio_pin)
+RailcomTx::RailcomTx(uart_inst_t* uart, uint tx_pin, uint pio_pin)
     : _uart(uart), _tx_pin(tx_pin), _pio_pin(pio_pin), _pio(pio0), _sm(0), _offset(0), _send_pending(false) {
     pio_sender_instance = this;
 }
 
-void RailcomSender::begin() {
+void RailcomTx::begin() {
     uart_init(_uart, 115200);
     gpio_set_function(_tx_pin, GPIO_FUNC_UART);
     pio_init();
 }
 
-void RailcomSender::end() {
+void RailcomTx::end() {
     uart_deinit(_uart);
     pio_sm_set_enabled(_pio, _sm, false);
     if (pio_can_remove_program(_pio, &railcom_cutout_program)) {
@@ -42,7 +42,7 @@ void RailcomSender::end() {
     pio_sm_unclaim(_pio, _sm);
 }
 
-void RailcomSender::pio_init() {
+void RailcomTx::pio_init() {
     _sm = pio_claim_unused_sm(_pio, true);
     _offset = pio_add_program(_pio, &railcom_cutout_program);
     pio_sm_config c = railcom_cutout_program_get_default_config(_offset);
@@ -54,7 +54,7 @@ void RailcomSender::pio_init() {
     irq_set_enabled(PIO0_IRQ_0, true);
 }
 
-void RailcomSender::send_dcc_with_cutout(const DCCMessage& dccMsg) {
+void RailcomTx::send_dcc_with_cutout(const DCCMessage& dccMsg) {
     uart_write_blocking(_uart, dccMsg.getData(), dccMsg.getLength());
     uart_tx_wait_blocking(_uart);
 
@@ -63,12 +63,12 @@ void RailcomSender::send_dcc_with_cutout(const DCCMessage& dccMsg) {
     pio_sm_set_enabled(_pio, _sm, true);
 }
 
-void RailcomSender::queue_message(uint8_t channel, const std::vector<uint8_t>& message) {
+void RailcomTx::queue_message(uint8_t channel, const std::vector<uint8_t>& message) {
     if (channel == 1) _ch1_queue.push(message);
     else _ch2_queue.push(message);
 }
 
-void RailcomSender::task() {
+void RailcomTx::task() {
     if (_send_pending) {
         _send_pending = false;
 
@@ -82,7 +82,7 @@ void RailcomSender::task() {
     }
 }
 
-void RailcomSender::send_queued_messages() {
+void RailcomTx::send_queued_messages() {
     if (!_ch1_queue.empty()) {
         const auto& msg = _ch1_queue.front();
         uart_write_blocking(_uart, msg.data(), msg.size());
@@ -98,24 +98,24 @@ void RailcomSender::send_queued_messages() {
     }
 }
 
-// --- RailcomReceiver Implementation ---
-RailcomReceiver::RailcomReceiver(uart_inst_t* uart, uint rx_pin)
+// --- RailcomRx Implementation ---
+RailcomRx::RailcomRx(uart_inst_t* uart, uint rx_pin)
     : _uart(uart), _rx_pin(rx_pin), _decoder_address(0) {}
 
-void RailcomReceiver::begin() {
+void RailcomRx::begin() {
     uart_init(_uart, 250000);
     gpio_set_function(_rx_pin, GPIO_FUNC_UART);
 }
 
-void RailcomReceiver::end() {
+void RailcomRx::end() {
     uart_deinit(_uart);
 }
 
-void RailcomReceiver::set_decoder_address(uint16_t address) {
+void RailcomRx::set_decoder_address(uint16_t address) {
     _decoder_address = address;
 }
 
-bool RailcomReceiver::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
+bool RailcomRx::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
     buffer.clear();
     uint32_t start = millis();
     while (millis() - start < timeout_ms) {

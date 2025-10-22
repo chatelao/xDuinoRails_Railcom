@@ -1,11 +1,11 @@
 #include <Arduino.h>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t DECODER_ADDRESS = 1234;
 
-RailcomSender sender(uart0, 0, 1);
+RailcomTx sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
 // Note: We'll re-use the LOCOMOTIVE type for the function decoder
 DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, DECODER_ADDRESS);

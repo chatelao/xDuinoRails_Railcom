@@ -2,7 +2,7 @@
 #include <NmraDcc.h>
 #include <Adafruit_NeoPixel.h>
 #include <map>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
@@ -26,7 +26,7 @@ std::map<uint8_t, uint32_t> functionColors = {
     {7, pixels.Color(148, 0, 211)},  // Violet
 };
 
-RailcomSender sender(uart0, 0, 1);
+RailcomTx sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
 DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
 NmraDcc dcc;

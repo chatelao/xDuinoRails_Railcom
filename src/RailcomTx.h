@@ -1,5 +1,5 @@
-#ifndef RAILCOM_SENDER_H
-#define RAILCOM_SENDER_H
+#ifndef RAILCOM_TX_H
+#define RAILCOM_TX_H
 
 #include <Arduino.h>
 #include <vector>
@@ -8,12 +8,12 @@
 #include "hardware/uart.h"
 #include "Railcom.h" // For DCCMessage
 
-class RailcomSender;
-extern RailcomSender* pio_sender_instance;
+class RailcomTx;
+extern RailcomTx* pio_sender_instance;
 
-class RailcomSender {
+class RailcomTx {
 public:
-    RailcomSender(uart_inst_t* uart, uint tx_pin, uint pio_pin);
+    RailcomTx(uart_inst_t* uart, uint tx_pin, uint pio_pin);
     void begin();
     void end();
     void send_dcc_with_cutout(const DCCMessage& dccMsg);
@@ -40,4 +40,4 @@ public:
     volatile bool _send_pending;
 };
 
-#endif // RAILCOM_SENDER_H
+#endif // RAILCOM_TX_H

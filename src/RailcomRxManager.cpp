@@ -1,6 +1,6 @@
 #include "RailcomRxManager.h"
 
-RailcomRxManager::RailcomRxManager(RailcomReceiver& receiver)
+RailcomRxManager::RailcomRxManager(RailcomRx& receiver)
     : _receiver(receiver),
       _parser_state(ParserState::Idle),
       _accumulator(0),

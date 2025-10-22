@@ -27,13 +27,13 @@ The library is split into a transmitter (`RailcomTxManager`) and receiver (`Rail
 
 ```cpp
 #include <Arduino.h>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCO_ADDRESS = 4098;
 
-RailcomSender sender(uart0, 0, 1); // UART, TX Pin, PIO Pin
+RailcomTx sender(uart0, 0, 1); // UART, TX Pin, PIO Pin
 RailcomTxManager txManager(sender);
 DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
 

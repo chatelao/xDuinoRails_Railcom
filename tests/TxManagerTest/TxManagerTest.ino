@@ -1,16 +1,16 @@
 #include <AUnit.h>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 
 // Mock Sender to inspect the queue
-class TestableRailcomSender : public RailcomSender {
+class TestableRailcomTx : public RailcomTx {
 public:
-    TestableRailcomSender() : RailcomSender(nullptr, 0, 0) {}
-    // We make the queues public for testing via the preprocessor directive in RailcomSender.h
+    TestableRailcomTx() : RailcomTx(nullptr, 0, 0) {}
+    // We make the queues public for testing via the preprocessor directive in RailcomTx.h
 };
 
 test(TxManager, queuePomResponse) {
-    TestableRailcomSender sender;
+    TestableRailcomTx sender;
     RailcomTxManager txManager(sender);
 
     txManager.sendPomResponse(123);

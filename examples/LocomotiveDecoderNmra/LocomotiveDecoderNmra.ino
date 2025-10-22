@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <NmraDcc.h>
-#include "RailcomSender.h"
+#include "RailcomTx.h"
 #include "RailcomTxManager.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 
-RailcomSender sender(uart0, 0, 1);
+RailcomTx sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
 DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
 NmraDcc dcc;
