@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include "Railcom.h"
-#include "RailcomSender.h"
-#include "RailcomTxManager.h"
+#include "RailcomTx.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
@@ -9,23 +8,22 @@ const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 // For RCN-218 automatic logon, you would also provide the manufacturer and product IDs:
 // const uint16_t MANUFACTURER_ID = 0x0123;
 // const uint32_t PRODUCT_ID = 0x456789AB;
-// DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
+// DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
 
-RailcomSender sender(uart0, 0, 1);
-RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, 0, 0);
+RailcomTx railcomTx(uart0, 0, 1);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, 0, 0);
 
 unsigned long lastDccPacketTime = 0;
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
-    sender.begin();
+    railcomTx.begin();
     Serial.println("Locomotive Decoder (Dummy) Example - State Machine Version");
 }
 
 void loop() {
-    sender.task();
+    railcomTx.task();
 
     // Simulate receiving a DCC packet addressed to us every second
     if (millis() - lastDccPacketTime > 1000) {
@@ -39,6 +37,6 @@ void loop() {
         stateMachine.handleDccPacket(dcc_msg);
 
         // 3. Trigger the cutout to send the queued message
-        sender.send_dcc_with_cutout(dcc_msg);
+        railcomTx.send_dcc_with_cutout(dcc_msg);
     }
 }
