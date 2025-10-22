@@ -20,6 +20,7 @@ jobs:
           libraries: |
             - name: AUnit
             - name: NmraDcc
+            - name: Adafruit NeoPixel
           sketch-paths: |
             - examples/AccessoryDecoderDummy
             - examples/AccessoryDecoderNmra

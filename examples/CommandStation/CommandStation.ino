@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <NmraDcc.h>
 #include "RailcomSender.h"
 #include "RailcomReceiver.h"
 #include "RailcomTxManager.h"
