@@ -15,9 +15,9 @@ jobs:
 
       - name: Install RP2040 Platform
         run: |
+          arduino-cli config set board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           arduino-cli core update-index
-          arduino-cli core install rp2040:rp2040@3.1.1 --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
-
+          arduino-cli core install rp2040:rp2040@3.1.1
       - name: Compile All Sketches
         uses: arduino/compile-sketches@v1
         with:
@@ -35,5 +35,5 @@ jobs:
             - tests/DCCMessageTest
             - tests/EncodingTest
             - tests/InCircuitTest
-            - tests/ManagerTest
+            - tests/TxManagerTest
             - tests/EndToEndTest
