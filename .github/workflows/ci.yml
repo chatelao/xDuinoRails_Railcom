@@ -13,13 +13,15 @@ jobs:
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
+      - name: Install RP2040 Platform
+        run: |
+          arduino-cli config set board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+          arduino-cli core update-index
+          arduino-cli core install rp2040:rp2040@3.1.1
       - name: Compile All Sketches
         uses: arduino/compile-sketches@v1
         with:
           fqbn: rp2040:rp2040:pico
-          platforms: |
-            - name: rp2040:rp2040@3.1.1
-              source-url: https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           libraries: |
             - name: AUnit
             - name: NmraDcc
