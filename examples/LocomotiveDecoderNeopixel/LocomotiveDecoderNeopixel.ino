@@ -2,8 +2,7 @@
 #include <NmraDcc.h>
 #include <Adafruit_NeoPixel.h>
 #include <map>
-#include "RailcomSender.h"
-#include "RailcomTxManager.h"
+#include "RailcomTx.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
@@ -26,9 +25,8 @@ std::map<uint8_t, uint32_t> functionColors = {
     {7, pixels.Color(148, 0, 211)},  // Violet
 };
 
-RailcomSender sender(uart0, 0, 1);
-RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
+RailcomTx railcomTx(uart0, 0, 1);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
 NmraDcc dcc;
 
 void notifyDccSpeedPacket(uint16_t address, DCC_ADDR_TYPE addr_type, uint8_t speed, DCC_DIRECTION forward) {
@@ -43,7 +41,7 @@ void notifyDccSpeedPacket(uint16_t address, DCC_ADDR_TYPE addr_type, uint8_t spe
     pixels.show();
 
     // Trigger the cutout so the message can be sent
-    sender.send_dcc_with_cutout(dcc_msg);
+    railcomTx.send_dcc_with_cutout(dcc_msg);
 }
 
 void notifyDccFunc(uint16_t address, DCC_ADDR_TYPE addr_type, FN_GROUP func_group, uint8_t func_state) {
@@ -112,7 +110,7 @@ void setup() {
     dcc.begin(INPUT_PIN, 0);
     dcc.setSpeedPacketHandler(notifyDccSpeedPacket, true);
     dcc.setFunctionPacketHandler(notifyDccFunc, true);
-    sender.begin();
+    railcomTx.begin();
 
     pixels.begin();
     pixels.setBrightness(0);
@@ -123,5 +121,5 @@ void setup() {
 
 void loop() {
     dcc.process();
-    sender.task();
+    railcomTx.task();
 }

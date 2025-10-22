@@ -2,12 +2,12 @@
 
 This document provides a detailed overview of the high-level classes used to send and receive RCN-217 compliant RailCom messages.
 
-## `RailcomTxManager` Class
+## `RailcomTx` Class
 
 This class provides the high-level interface for queueing RailCom messages to be sent.
 
-### `RailcomTxManager(RailcomSender& sender)`
-Constructs a new manager. It requires a reference to a low-level `RailcomSender` instance.
+### `RailcomTx(uart_inst_t* uart, uint tx_pin, uint pio_pin)`
+Constructs a new `RailcomTx` instance.
 
 ### `sendPomResponse(uint8_t cvValue)`
 Queues a `POM` (ID 0) response, typically after a POM read request.
