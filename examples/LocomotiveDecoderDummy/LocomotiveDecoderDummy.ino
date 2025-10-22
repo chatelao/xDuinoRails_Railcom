@@ -6,9 +6,14 @@
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 
+// For RCN-218 automatic logon, you would also provide the manufacturer and product IDs:
+// const uint16_t MANUFACTURER_ID = 0x0123;
+// const uint32_t PRODUCT_ID = 0x456789AB;
+// DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
+
 RailcomSender sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
+DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, 0, 0);
 
 unsigned long lastDccPacketTime = 0;
 
