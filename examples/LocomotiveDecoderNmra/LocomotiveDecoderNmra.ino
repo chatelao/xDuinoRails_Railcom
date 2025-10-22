@@ -9,16 +9,13 @@ const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 RailcomSender sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
 DecoderStateMachine stateMachine(txManager, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
-NmraDcc dcc;
+NmraDcc Dcc;
 
-void notifyDccSpeedPacket(uint16_t address, DCC_ADDR_TYPE addr_type, uint8_t speed, DCC_DIRECTION forward) {
-    // We can get the raw packet from the NmraDcc library
-    DCCMessage dcc_msg(dcc.getPacket(), dcc.getPacketSize());
+#define DCC_PIN 2
 
-    // Let the state machine handle the logic
+void notifyDccMsg(DCC_MSG* msg) {
+    DCCMessage dcc_msg(msg->Data, msg->Size);
     stateMachine.handleDccPacket(dcc_msg);
-
-    // Trigger the cutout so the message can be sent
     sender.send_dcc_with_cutout(dcc_msg);
 }
 
@@ -26,14 +23,14 @@ void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    dcc.begin(INPUT_PIN, 0);
-    dcc.setSpeedPacketHandler(notifyDccSpeedPacket, true);
+    Dcc.pin(DCC_PIN, 0);
+    Dcc.init(MAN_ID_DIY, 10, FLAGS_MY_ADDRESS_ONLY, 0);
     sender.begin();
 
     Serial.println("Locomotive Decoder (NMRA) Example - State Machine Version");
 }
 
 void loop() {
-    dcc.process();
+    Dcc.process();
     sender.task();
 }

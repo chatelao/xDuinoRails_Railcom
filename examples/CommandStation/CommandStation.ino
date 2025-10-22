@@ -1,19 +1,17 @@
 #include <Arduino.h>
 #include "RailcomSender.h"
-#include "RailcomReceiver.h"
+#include "RailcomRx.h"
 #include "RailcomTxManager.h"
-#include "RailcomRxManager.h"
 
 RailcomSender sender(uart0, 0, 1);
-RailcomReceiver receiver(uart0, 1);
+RailcomRx railcom_rx(uart0, 1);
 RailcomTxManager txManager(sender);
-RailcomRxManager rxManager(receiver);
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
     sender.begin();
-    receiver.begin();
+    railcom_rx.begin();
     Serial.println("Command Station Example (Refactored)");
     Serial.println("Enter 'p <addr> <cv>' to send POM Read");
 }
@@ -33,12 +31,12 @@ void loop() {
     sender.task();
 
     if (Serial.available() > 0) {
-        String input = Serial.readStringUntil('\\n');
+        String input = Serial.readStringUntil('\n');
         input.trim();
         parseCommand(input);
     }
 
-    RailcomMessage* msg = rxManager.readMessage();
+    RailcomMessage* msg = railcom_rx.readMessage();
     if (msg != nullptr) {
         Serial.print("Received Message! ID: ");
         Serial.println((int)msg->id);

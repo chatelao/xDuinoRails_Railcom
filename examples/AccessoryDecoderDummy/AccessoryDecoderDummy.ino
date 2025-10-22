@@ -7,7 +7,7 @@ const uint16_t ACCESSORY_ADDRESS = 100;
 
 RailcomSender sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::ACCESSORY, ACCESSORY_ADDRESS);
+DecoderStateMachine stateMachine(txManager, DecoderType::ACCESSORY_STANDARD, ACCESSORY_ADDRESS);
 
 unsigned long lastDccPacketTime = 0;
 int command_step = 0;

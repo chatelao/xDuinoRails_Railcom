@@ -12,7 +12,7 @@ void RailcomTxManager::sendDatagram(uint8_t channel, RailcomID id, uint32_t payl
     int currentBit = (numBytes * 6) - 6;
     for (int i = 0; i < numBytes; ++i) {
         uint8_t chunk = (data >> currentBit) & 0x3F;
-        encodedBytes.push_back(RailcomEncoding::encode4of8(chunk));
+        encodedBytes.push_back(Railcom::encode4of8(chunk));
         currentBit -= 6;
     }
     _sender.queue_message(channel, encodedBytes);
@@ -57,8 +57,8 @@ void RailcomTxManager::sendServiceRequest(uint16_t accessoryAddress, bool isExte
     if (accessoryAddress > 2047) return;
     uint16_t payload = (accessoryAddress & 0x7FF) | (isExtended ? 0x800 : 0x000);
     std::vector<uint8_t> encodedBytes;
-    encodedBytes.push_back(RailcomEncoding::encode4of8((payload >> 6) & 0x3F));
-    encodedBytes.push_back(RailcomEncoding::encode4of8(payload & 0x3F));
+    encodedBytes.push_back(Railcom::encode4of8((payload >> 6) & 0x3F));
+    encodedBytes.push_back(Railcom::encode4of8(payload & 0x3F));
     _sender.queue_message(1, encodedBytes);
 }
 
@@ -102,7 +102,7 @@ void RailcomTxManager::sendDecoderState(uint8_t changeFlags, uint16_t changeCoun
     data[3] = (payload >> 16);
     data[4] = (payload >> 8);
 
-    uint8_t crc = RailcomEncoding::crc8(data, 5);
+    uint8_t crc = Railcom::crc8(data, 5);
     payload |= crc;
 
     payload |= ((uint64_t)RailcomID::DECODER_STATE << 44);
@@ -114,13 +114,13 @@ void RailcomTxManager::sendDataSpace(const uint8_t* data, size_t len, uint8_t da
     uint8_t buffer[33];
     buffer[0] = header;
     memcpy(buffer + 1, data, len);
-    uint8_t crc = RailcomEncoding::crc8(buffer, len + 1, dataSpaceNum);
+    uint8_t crc = Railcom::crc8(buffer, len + 1, dataSpaceNum);
 
     std::vector<uint8_t> encodedBytes;
     int currentBit = (len + 1) * 8 - 8;
     for (size_t i = 0; i < len + 2; ++i) {
         uint8_t chunk = (i == 0) ? header : ((i <= len) ? data[i-1] : crc);
-        uint8_t encoded = RailcomEncoding::encode4of8(chunk);
+        uint8_t encoded = Railcom::encode4of8(chunk);
         encodedBytes.push_back(encoded);
     }
     _sender.queue_message(1, std::vector<uint8_t>(encodedBytes.begin(), encodedBytes.begin() + 2));
@@ -128,16 +128,16 @@ void RailcomTxManager::sendDataSpace(const uint8_t* data, size_t len, uint8_t da
 }
 
 void RailcomTxManager::sendAck() {
-    std::vector<uint8_t> ackBytes = { RAILCOM_ACK1, RAILCOM_ACK2 };
+    std::vector<uint8_t> ackBytes = { Railcom::ACK1, Railcom::ACK2 };
     _sender.queue_message(1, ackBytes);
-    ackBytes = { RAILCOM_ACK1, RAILCOM_ACK2, RAILCOM_ACK1, RAILCOM_ACK2 };
+    ackBytes = { Railcom::ACK1, Railcom::ACK2, Railcom::ACK1, Railcom::ACK2 };
     _sender.queue_message(2, ackBytes);
 }
 
 void RailcomTxManager::sendNack() {
-    std::vector<uint8_t> nackBytes = { RAILCOM_NACK, RAILCOM_NACK };
+    std::vector<uint8_t> nackBytes = { Railcom::NACK, Railcom::NACK };
     _sender.queue_message(1, nackBytes);
-    nackBytes = { RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK };
+    nackBytes = { Railcom::NACK, Railcom::NACK, Railcom::NACK, Railcom::NACK };
     _sender.queue_message(2, nackBytes);
 }
 
@@ -146,7 +146,7 @@ void RailcomTxManager::sendBundledDatagram(uint64_t payload) {
     int currentBit = 42;
     for (int i = 0; i < 8; ++i) {
         uint8_t chunk = (payload >> currentBit) & 0x3F;
-        encodedBytes.push_back(RailcomEncoding::encode4of8(chunk));
+        encodedBytes.push_back(Railcom::encode4of8(chunk));
         currentBit -= 6;
     }
     _sender.queue_message(1, std::vector<uint8_t>(encodedBytes.begin(), encodedBytes.begin() + 2));

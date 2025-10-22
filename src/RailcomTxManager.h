@@ -3,7 +3,6 @@
 
 #include "Railcom.h"
 #include "RailcomSender.h"
-#include "RailcomEncoding.h"
 
 class RailcomTxManager {
 public:

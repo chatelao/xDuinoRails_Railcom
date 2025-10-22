@@ -1,13 +1,17 @@
-#ifndef RAILCOM_RX_MANAGER_H
-#define RAILCOM_RX_MANAGER_H
+#ifndef RAILCOM_RX_H
+#define RAILCOM_RX_H
 
+#include <Arduino.h>
+#include <vector>
+#include "hardware/uart.h"
 #include "Railcom.h"
-#include "RailcomReceiver.h"
-#include "RailcomEncoding.h"
 
-class RailcomRxManager {
+class RailcomRx {
 public:
-    RailcomRxManager(RailcomReceiver& receiver);
+    RailcomRx(uart_inst_t* uart, uint rx_pin);
+    void begin();
+    void end();
+    void set_decoder_address(uint16_t address);
 
     // Main parser function. Call this repeatedly.
     // Returns a pointer to a message struct if a message has been successfully parsed.
@@ -15,9 +19,13 @@ public:
     RailcomMessage* readMessage();
 
 private:
-    RailcomReceiver& _receiver;
+    // From RailcomReceiver
+    uart_inst_t* _uart;
+    uint _rx_pin;
+    uint16_t _decoder_address;
+    bool read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms);
 
-    // Parser state
+    // From RailcomRxManager
     enum class ParserState { Idle, Reading };
     ParserState _parser_state;
     std::vector<uint8_t> _raw_buffer;
@@ -33,4 +41,4 @@ private:
     XpomMessage _xpom_msg;
 };
 
-#endif // RAILCOM_RX_MANAGER_H
+#endif // RAILCOM_RX_H

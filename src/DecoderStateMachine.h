@@ -7,7 +7,8 @@
 
 enum class DecoderType {
     LOCOMOTIVE,
-    ACCESSORY
+    ACCESSORY_STANDARD,
+    ACCESSORY_EXTENDED
 };
 
 enum class LogonState {
@@ -22,16 +23,20 @@ class DecoderStateMachine {
 public:
     DecoderStateMachine(RailcomTxManager& txManager, DecoderType type, uint16_t address, uint16_t manufacturerId = 0, uint32_t productId = 0);
 
-    // This is the main entry point. It analyzes the DCC packet and queues
-    // the appropriate RailCom response.
     void handleDccPacket(const DCCMessage& dccMsg);
 
 private:
+    void setupCallbacks();
+
     RailcomTxManager& _txManager;
     DecoderType _type;
     uint16_t _address;
+    uint16_t _manufacturerId;
+    uint32_t _productId;
 
     // Internal state
+    RailcomDccParser _dccParser;
+    LogonState _logonState;
     unsigned long _last_addressed_time;
 };
 

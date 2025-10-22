@@ -8,11 +8,13 @@ const uint16_t ACCESSORY_ADDRESS = 100;
 
 RailcomSender sender(uart0, 0, 1);
 RailcomTxManager txManager(sender);
-DecoderStateMachine stateMachine(txManager, DecoderType::ACCESSORY, ACCESSORY_ADDRESS);
-NmraDcc dcc;
+DecoderStateMachine stateMachine(txManager, DecoderType::ACCESSORY_STANDARD, ACCESSORY_ADDRESS);
+NmraDcc Dcc;
 
-void notifyDccAccPacket(uint16_t address, bool activate, uint8_t output, bool C, bool S) {
-    DCCMessage dcc_msg(dcc.getPacket(), dcc.getPacketSize());
+#define DCC_PIN 2
+
+void notifyDccMsg(DCC_MSG* msg) {
+    DCCMessage dcc_msg(msg->Data, msg->Size);
     stateMachine.handleDccPacket(dcc_msg);
     sender.send_dcc_with_cutout(dcc_msg);
 }
@@ -21,14 +23,14 @@ void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    dcc.begin(INPUT_PIN, 0);
-    dcc.setAccPacketHandler(notifyDccAccPacket, true);
+    Dcc.pin(DCC_PIN, 0);
+    Dcc.init(MAN_ID_DIY, 10, FLAGS_MY_ADDRESS_ONLY, 0);
     sender.begin();
 
     Serial.println("Accessory Decoder (NMRA) Example - State Machine Version");
 }
 
 void loop() {
-    dcc.process();
+    Dcc.process();
     sender.task();
 }
