@@ -83,3 +83,44 @@ test(EndToEnd, serviceRequest) {
     assertEqual((int)msg->id, (int)RailcomID::ADR_LOW);
     assertEqual(static_cast<AdrMessage*>(msg)->address, 123);
 }
+
+test(EndToEnd, rcn218Logon) {
+    // 1. CS sends LOGON_ENABLE
+    uint8_t logon_enable[] = { RCN218::DCC_A_ADDRESS, RCN218::CMD_LOGON_ENABLE | 1, 0x12, 0x34, 0x56 };
+    DCCMessage logon_msg(logon_enable, sizeof(logon_enable));
+    cs_sender.send_dcc_with_cutout(logon_msg);
+    delay(15);
+
+    // 2. Decoder should respond with DECODER_UNIQUE
+    decoder_tx_manager.sendDecoderUnique(0x0123, 0x456789AB);
+    decoder_sender.task();
+    delay(10);
+
+    // 3. CS should receive DECODER_UNIQUE
+    RailcomMessage* unique_msg = cs_rx_manager.readMessage();
+    assertNotNull(unique_msg);
+    assertEqual((int)unique_msg->id, (int)RailcomID::DECODER_UNIQUE);
+    DecoderUniqueMessage* du_msg = static_cast<DecoderUniqueMessage*>(unique_msg);
+    assertEqual(du_msg->manufacturerId, 0x0123);
+    assertEqual(du_msg->productId, 0x456789AB);
+
+    // 4. CS sends LOGON_ASSIGN
+    uint8_t logon_assign[] = { RCN218::DCC_A_ADDRESS, RCN218::CMD_LOGON_ASSIGN | 1, 0x23, 0x45, 0x67, 0x89, 0xAB, (DECODER_ADDRESS >> 8), (DECODER_ADDRESS & 0xFF) };
+    DCCMessage assign_msg(logon_assign, sizeof(logon_assign));
+    cs_sender.send_dcc_with_cutout(assign_msg);
+    delay(15);
+
+    // 5. Decoder should respond with DECODER_STATE
+    decoder_tx_manager.sendDecoderState(0xCC, 0x1122, 0x3344);
+    decoder_sender.task();
+    delay(10);
+
+    // 6. CS should receive DECODER_STATE
+    RailcomMessage* state_msg = cs_rx_manager.readMessage();
+    assertNotNull(state_msg);
+    assertEqual((int)state_msg->id, (int)RailcomID::DECODER_STATE);
+    DecoderStateMessage* ds_msg = static_cast<DecoderStateMessage*>(state_msg);
+    assertEqual(ds_msg->changeFlags, 0xCC);
+    assertEqual(ds_msg->changeCount, 0x1122);
+    assertEqual(ds_msg->protocolCaps, 0x3344);
+}
