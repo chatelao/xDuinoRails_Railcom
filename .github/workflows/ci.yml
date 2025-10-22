@@ -22,7 +22,7 @@ jobs:
       - name: Compile All Sketches
         uses: arduino/compile-sketches@v1
         with:
-          fqbn: rp2040:rp2040:pico
+          fqbn: rp2040:rp2040:rpipico
           libraries: |
             - name: AUnit
             - name: NmraDcc
