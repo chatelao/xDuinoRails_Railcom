@@ -10,6 +10,16 @@ An Arduino library for encoding and decoding RailCom messages on the RP2040, com
 -   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
 -   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
 
+## Real-World Use Cases
+
+RailCom's bidirectional communication opens up many possibilities for realistic and automated layout control. Here are some of the most common applications:
+
+1.  **Automatic Locomotive Recognition:** A command station can instantly identify a locomotive when you place it on the track, eliminating the need to manually enter its address.
+2.  **On-the-Main Programming:** Read and write decoder CVs on the main track without needing a separate programming track, making it much faster to fine-tune performance.
+3.  **Accessory Feedback:** Turnout decoders can report their actual position back, ensuring your control panel is always synchronized with the physical layout.
+
+For a more comprehensive list of what you can do with RailCom, see the **[full Use Cases documentation](docs/UseCases.md)**.
+
 ## Neopixel Example
 
 The `LocomotiveDecoderNeopixel` example requires the [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) library to be installed. You can install it through the Arduino Library Manager.
