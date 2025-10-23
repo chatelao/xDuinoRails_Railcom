@@ -2,18 +2,22 @@
 #define MOCK_RAILCOM_TX_H
 
 #include "RailcomTx.h"
+#include <vector>
 
 class MockRailcomTx : public RailcomTx {
 public:
+    struct SentMessage {
+        RailcomID id;
+        uint32_t data1;
+    };
+
+    std::vector<SentMessage> sentMessages;
+
     MockRailcomTx() : RailcomTx(nullptr, 0, 0) {}
 
-    void queue_message(uint8_t channel, const std::vector<uint8_t>& data) {
-        last_channel = channel;
-        last_data = data;
+    void sendStatus1(uint8_t status) override {
+        sentMessages.push_back({RailcomID::STAT1, status});
     }
-
-    uint8_t last_channel;
-    std::vector<uint8_t> last_data;
 };
 
 #endif // MOCK_RAILCOM_TX_H

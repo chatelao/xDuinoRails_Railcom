@@ -39,3 +39,4 @@ jobs:
             - tests/InCircuitSelfTest
             - tests/TxManagerTest
             - tests/EndToEndTest
+            - tests/10_VerifyingTurnoutPositionTest
