@@ -1,6 +1,6 @@
 #include "DecoderStateMachine.h"
 
-DecoderStateMachine::DecoderStateMachine(RailcomTxManager& txManager, DecoderType type, uint16_t address, uint16_t manufacturerId, uint32_t productId)
+DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint16_t manufacturerId, uint32_t productId)
     : _txManager(txManager), _type(type), _address(address),
       _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE) {
     setupCallbacks();

@@ -36,5 +36,6 @@ jobs:
             - tests/DCCMessageTest
             - tests/EncodingTest
             - tests/InCircuitTest
+            - tests/InCircuitSelfTest
             - tests/TxManagerTest
             - tests/EndToEndTest

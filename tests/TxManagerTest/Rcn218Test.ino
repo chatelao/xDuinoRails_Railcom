@@ -1,13 +1,12 @@
 #include <AUnit.h>
-#include "RailcomSender.h"
-#include "RailcomTxManager.h"
+#include "RailcomTx.h"
 
-// Mock RailcomSender to capture queued messages
-class MockRailcomSender : public RailcomSender {
+// Mock RailcomTx to capture queued messages
+class MockRailcomTx : public RailcomTx {
 public:
-    MockRailcomSender() : RailcomSender(nullptr, 0, 0) {}
+    MockRailcomTx() : RailcomTx(nullptr, 0, 0) {}
 
-    void queue_message(uint8_t channel, const std::vector<uint8_t>& data) override {
+    void queue_message(uint8_t channel, const std::vector<uint8_t>& data) {
         last_channel = channel;
         last_data = data;
     }
@@ -17,10 +16,9 @@ public:
 };
 
 test(Rcn218, SendDecoderUnique) {
-    MockRailcomSender mockSender;
-    RailcomTxManager txManager(mockSender);
+    MockRailcomTx mockTx;
 
-    txManager.sendDecoderUnique(0x0123, 0x456789AB);
+    mockTx.sendDecoderUnique(0x0123, 0x456789AB);
 
     // Expected encoded data for DECODER_UNIQUE
     // ID=15 (0xF), Manuf=0x0123, Prod=0x456789AB
@@ -28,17 +26,16 @@ test(Rcn218, SendDecoderUnique) {
     // This needs to be 4of8 encoded.
     // For simplicity, we'll just check the first byte.
     // First 6 bits: 111100 (0x3C) -> encoded: 0b10011100
-    assertEqual(mockSender.last_data[0], 0b10011100);
+    assertEqual(mockTx.last_data[0], 0b10011100);
 }
 
 test(Rcn218, SendDecoderState) {
-    MockRailcomSender mockSender;
-    RailcomTxManager txManager(mockSender);
+    MockRailcomTx mockTx;
 
-    txManager.sendDecoderState(0xAB, 0x1234, 0x5678);
+    mockTx.sendDecoderState(0xAB, 0x1234, 0x5678);
 
     // Expected encoded data for DECODER_STATE
     // ID=13 (0xD), Flags=0xAB, Count=0x1234, Caps=0x5678
     // First 6 bits: 110110 (0x36) -> encoded: 0b01101001
-    assertEqual(mockSender.last_data[0], 0b01101001);
+    assertEqual(mockTx.last_data[0], 0b01101001);
 }
