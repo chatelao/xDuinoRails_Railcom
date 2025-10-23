@@ -40,3 +40,4 @@ jobs:
             - tests/EndToEndTest
             - tests/01_AutomaticLogonRegistrationTest
             - tests/02_BasicLocomotiveIdentificationTest
+            - tests/03_BlockOccupancyReportingTest
