@@ -4,7 +4,7 @@ An Arduino library for encoding and decoding RailCom messages on the RP2040, com
 
 ## Features
 
--   **High-Level API:** `RailcomTx` and `RailcomRxManager` classes simplify creating, sending, and parsing RCN-217 messages.
+-   **High-Level API:** `RailcomTx` (for decoders) and `RailcomRx` (for detectors/centrales) classes simplify creating, sending, and parsing RCN-217 messages.
 -   **Robust Sending:** Uses a non-blocking, ISR-driven message queue to ensure correct timing.
 -   **Decoder State Machine:** Includes a `DecoderStateMachine` class to demonstrate realistic response logic.
 -   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
