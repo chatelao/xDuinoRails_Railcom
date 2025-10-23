@@ -38,10 +38,4 @@ jobs:
             - tests/InCircuitTest
             - tests/TxManagerTest
             - tests/EndToEndTest
-            - tests/01_AutomaticLogonRegistrationTest
-            - tests/02_BasicLocomotiveIdentificationTest
-            - tests/03_BlockOccupancyReportingTest
-            - tests/04_TargetedCvReadingTest
-            - tests/05_ConfirmingCvWritesTest
-            - tests/06_ReadingMultiByteCvsTest
-            - tests/07_DisplayingLocomotiveLongNameTest
+            - tests/10_VerifyingTurnoutPositionTest
