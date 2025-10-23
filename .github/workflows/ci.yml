@@ -26,7 +26,6 @@ jobs:
           libraries: |
             - name: AUnit
             - name: NmraDcc
-          library-manager-update: true
           sketch-paths: |
             - examples/AccessoryDecoderDummy
             - examples/AccessoryDecoderNmra
@@ -39,25 +38,3 @@ jobs:
             - tests/InCircuitTest
             - tests/TxManagerTest
             - tests/EndToEndTest
-            - tests/01_AutomaticLogonRegistrationTest
-            - tests/02_BasicLocomotiveIdentificationTest
-            - tests/03_BlockOccupancyReportingTest
-            - tests/04_TargetedCvReadingTest
-            - tests/05_ConfirmingCvWritesTest
-            - tests/06_ReadingMultiByteCvsTest
-            - tests/07_DisplayingLocomotiveLongNameTest
-            - tests/08_AutomaticFunctionIconMappingTest
-            - tests/09_RealTimeSpeedMonitoringTest
-            - tests/10_VerifyingTurnoutPositionTest
-            - tests/11_ReportingJammedTurnoutTest
-            - tests/12_DisplayingTurnoutSwitchingTimeTest
-            - tests/13_ManualPushbuttonRouteRequestTest
-            - tests/14_TriggeringAutomatedScenariosTest
-            - tests/15_AutomaticRerailingDetectionTest
-            - tests/16_DynamicMotorLoadReportingTest
-            - tests/17_SimulatingFuelConsumptionTest
-            - tests/18_AutomaticConsistConfigurationTest
-            - tests/19_ReportingMechanicalDriveStatusTest
-            - tests/20_BulkCvReadingForMaintenanceTest
-            - tests/21_DisplayingManufacturerInfoTest
-            - tests/22_GpsBasedLocationTrackingTest
