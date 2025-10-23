@@ -41,3 +41,4 @@ jobs:
             - tests/01_AutomaticLogonRegistrationTest
             - tests/02_BasicLocomotiveIdentificationTest
             - tests/03_BlockOccupancyReportingTest
+            - tests/04_TargetedCvReadingTest
