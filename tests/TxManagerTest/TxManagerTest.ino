@@ -1,27 +1,19 @@
 #include <AUnit.h>
-#include "RailcomSender.h"
-#include "RailcomTxManager.h"
-
-// Mock Sender to inspect the queue
-class TestableRailcomSender : public RailcomSender {
-public:
-    TestableRailcomSender() : RailcomSender(nullptr, 0, 0) {}
-    // We make the queues public for testing via the preprocessor directive in RailcomSender.h
-};
+#include "RailcomTx.h"
+#include "mocks/MockRailcomTx.h"
 
 test(TxManager, queuePomResponse) {
-    TestableRailcomSender sender;
-    RailcomTxManager txManager(sender);
+    MockRailcomTx mockTx;
 
-    txManager.sendPomResponse(123);
+    mockTx.sendPomResponse(123);
 
-    assertFalse(sender._ch2_queue.empty());
-    std::vector<uint8_t> msg = sender._ch2_queue.front();
+    assertEqual(mockTx.last_channel, 2);
+    assertFalse(mockTx.last_data.empty());
 
     // Expected: ID 0 (POM), 8-bit payload 123 -> 12 bits
-    assertEqual(msg.size(), 2);
-    assertEqual(msg[0], 0b10101010); // Encoded chunk 1 (000001)
-    assertEqual(msg[1], 0b00110101); // Encoded chunk 2 (111011)
+    assertEqual(mockTx.last_data.size(), 2);
+    assertEqual(mockTx.last_data[0], 0b10101010); // Encoded chunk 1 (000001)
+    assertEqual(mockTx.last_data[1], 0b00110101); // Encoded chunk 2 (111011)
 }
 
 void setup() {

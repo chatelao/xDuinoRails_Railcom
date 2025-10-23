@@ -1,6 +1,9 @@
 #include "RailcomTx.h"
 #include "railcom.pio.h"
+#include "hardware/irq.h"
+#include "pico/stdlib.h"
 #include <cstring>
+#include "RailcomEncoding.h"
 
 RailcomTx* pio_sender_instance = nullptr;
 

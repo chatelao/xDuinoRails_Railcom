@@ -64,53 +64,10 @@ struct DecoderStateMessage : public RailcomMessage {
     uint16_t protocolCaps;
 };
 
-// --- Encoding/Decoding ---
+// --- Constants ---
+#define RAILCOM_ACK1 0b11110000
+#define RAILCOM_ACK2 0b00001111
+#define RAILCOM_NACK 0b00111100
 
-namespace Railcom {
-
-    // Special values for ACK/NACK, as defined in the RailCom specification.
-    const uint8_t ACK1 = 0b11110000;
-    const uint8_t ACK2 = 0b00001111;
-    const uint8_t NACK = 0b00111100;
-
-    /**
-     * @brief Encodes 6 bits of data into a 4-out-of-8 encoded byte.
-     *
-     * This encoding scheme is defined in RCN-217, Table 2. It ensures that
-     * every transmitted byte has exactly four '1' bits and four '0' bits,
-     * which helps with clock recovery and error detection on the receiver side.
-     *
-     * @param value The 6-bit value (0-63) to encode.
-     * @return The 8-bit encoded byte. Returns 0 if the input value is > 63.
-     */
-    uint8_t encode4of8(uint8_t value);
-
-    /**
-     * @brief Decodes a 4-out-of-8 encoded byte back into 6 bits of data.
-     *
-     * It also checks for the special ACK and NACK values. The function verifies
-     * that the byte has a Hamming weight of 4 (four '1' bits).
-     *
-     * @param encodedByte The 8-bit value to decode.
-     * @return The decoded 6-bit value (0-63).
-     *         Returns 0x100 for ACK, 0x101 for NACK, or -1 for an invalid byte.
-     */
-    int16_t decode4of8(uint8_t encodedByte);
-
-    /**
-     * @brief Calculates the RCN-218 CRC8 checksum.
-     *
-     * This is a standard CRC-8 calculation with a specific polynomial (0x31, reversed 0x8C)
-     * as defined in the RailCom specification. It's used to validate the integrity
-     * of multi-byte data packets.
-     *
-     * @param data Pointer to the data array.
-     * @param len  Number of bytes in the array.
-     * @param init Initial CRC value (defaults to 0).
-     * @return The calculated 8-bit CRC value.
-     */
-    uint8_t crc8(const uint8_t* data, size_t len, uint8_t init = 0);
-
-} // namespace Railcom
 
 #endif // RAILCOM_H
