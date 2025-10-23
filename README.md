@@ -62,3 +62,6 @@ void loop() {
 
 ## API Reference
 For a detailed API reference, please see the **[API Documentation](docs/API_Reference.md)**.
+
+## Testing
+For a detailed overview of the testing strategy, please see the **[Testing Documentation](docs/Testing.md)**.
