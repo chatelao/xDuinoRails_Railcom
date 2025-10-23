@@ -42,3 +42,4 @@ jobs:
             - tests/02_BasicLocomotiveIdentificationTest
             - tests/03_BlockOccupancyReportingTest
             - tests/04_TargetedCvReadingTest
+            - tests/05_ConfirmingCvWritesTest
