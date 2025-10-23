@@ -38,3 +38,5 @@ jobs:
             - tests/InCircuitTest
             - tests/TxManagerTest
             - tests/EndToEndTest
+            - tests/01_AutomaticLogonRegistrationTest
+            - tests/02_BasicLocomotiveIdentificationTest
