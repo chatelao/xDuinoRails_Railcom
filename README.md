@@ -31,34 +31,10 @@ The `LocomotiveDecoderNeopixel` example requires the [Adafruit NeoPixel](https:/
 
 ## Getting Started
 
-The library is split into a transmitter (`RailcomTx`) and receiver (`RailcomRxManager`).
+To get started, please see the detailed "howto" guides for wiring and minimal software examples:
 
-### Example: Locomotive Decoder
-
-```cpp
-#include <Arduino.h>
-#include "RailcomTx.h"
-#include "DecoderStateMachine.h"
-
-const uint16_t LOCO_ADDRESS = 4098;
-
-RailcomTx railcomTx(uart0, 0, 1); // UART, TX Pin, PIO Pin
-DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
-
-void setup() {
-    railcomTx.begin();
-}
-
-void loop() {
-    railcomTx.task(); // Must be called repeatedly
-
-    // Simulate a DCC packet for our address
-    DCCMessage dcc_msg;
-    stateMachine.handleDccPacket(dcc_msg);
-    railcomTx.send_dcc_with_cutout(dcc_msg);
-    delay(1000);
-}
-```
+-   **[Howto: RailCom Decoder (Transmitter)](docs/HowtoTx.md)**
+-   **[Howto: RailCom Detector (Receiver)](docs/HowtoRx.md)**
 
 ## API Reference
 For a detailed API reference, please see the **[API Documentation](docs/API_Reference.md)**.
