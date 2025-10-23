@@ -43,3 +43,5 @@ jobs:
             - tests/03_BlockOccupancyReportingTest
             - tests/04_TargetedCvReadingTest
             - tests/05_ConfirmingCvWritesTest
+            - tests/06_ReadingMultiByteCvsTest
+            - tests/07_DisplayingLocomotiveLongNameTest
