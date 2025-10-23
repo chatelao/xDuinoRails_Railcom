@@ -26,6 +26,7 @@ jobs:
           libraries: |
             - name: AUnit
             - name: NmraDcc
+          library-manager-update: true
           sketch-paths: |
             - examples/AccessoryDecoderDummy
             - examples/AccessoryDecoderNmra
@@ -38,3 +39,25 @@ jobs:
             - tests/InCircuitTest
             - tests/TxManagerTest
             - tests/EndToEndTest
+            - tests/LogonTest
+            - tests/LocoIdentificationTest
+            - tests/BlockOccupancyTest
+            - tests/PomReadTest
+            - tests/PomWriteTest
+            - tests/XpomReadTest
+            - tests/LocoLongNameTest
+            - tests/FunctionIconMappingTest
+            - tests/SpeedMonitoringTest
+            - tests/TurnoutPositionTest
+            - tests/JammedTurnoutTest
+            - tests/TurnoutSwitchingTimeTest
+            - tests/RouteRequestTest
+            - tests/AutomatedScenariosTest
+            - tests/RerailingDetectionTest
+            - tests/MotorLoadReportingTest
+            - tests/FuelConsumptionTest
+            - tests/ConsistConfigurationTest
+            - tests/MechanicalDriveStatusTest
+            - tests/BulkCvReadingTest
+            - tests/ManufacturerInfoTest
+            - tests/LocationTrackingTest
