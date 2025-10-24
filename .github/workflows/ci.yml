@@ -23,6 +23,7 @@ jobs:
         uses: arduino/compile-sketches@v1
         with:
           fqbn: rp2040:rp2040:rpipico
+          library-manager-update: true
           libraries: |
             - name: AUnit
             - name: NmraDcc
