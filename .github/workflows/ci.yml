@@ -21,6 +21,12 @@ jobs:
           arduino-cli core install rp2040:rp2040@3.1.1
           arduino-cli lib install AUnit NmraDcc
 
+      - name: Regenerate railcom.pio.h
+        run: |
+          PIOASM_PATH=$(find /home/runner/.arduino15/packages/rp2040/tools -name pioasm -type f)
+          echo "Found pioasm at $PIOASM_PATH"
+          $PIOASM_PATH -o c-sdk src/railcom.pio src/railcom.pio.h
+
       - name: Compile All Sketches
         run: |
           SKETCHES=(
