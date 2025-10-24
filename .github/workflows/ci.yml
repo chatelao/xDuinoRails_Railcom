@@ -13,34 +13,40 @@ jobs:
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
-      - name: Install RP2040 Platform
+      - name: Install RP2040 Platform and Libraries
         run: |
           arduino-cli config init
           arduino-cli config set board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           arduino-cli core update-index
           arduino-cli core install rp2040:rp2040@3.1.1
+          arduino-cli lib install AUnit NmraDcc
+
       - name: Compile All Sketches
-        uses: arduino/compile-sketches@v1
-        with:
-          fqbn: rp2040:rp2040:rpipico
-          cli-compile-flags: --libraries="."
-          libraries: |
-            - name: AUnit
-            - name: NmraDcc
-          sketch-paths: |
-            - examples/AccessoryDecoderDummy
-            - examples/AccessoryDecoderNmra
-            - examples/CommandStation
-            - examples/FunctionDecoderDummy
-            - examples/LocomotiveDecoderDummy
-            - examples/LocomotiveDecoderNmra
-            - tests/DCCMessageTest
-            - tests/EncodingTest
-            - tests/InCircuitTest
-            - tests/InCircuitSelfTest
-            - tests/TxManagerTest
-            - tests/EndToEndTest
-            - tests/UseCases/01_AutomaticLogonRegistrationTest
-            - tests/UseCases/02_BasicLocomotiveIdentificationTest
-            - tests/UseCases/03_BlockOccupancyReportingTest
-            - tests/UseCases/10_VerifyingTurnoutPositionTest
+        run: |
+          SKETCHES=(
+            "examples/AccessoryDecoderDummy"
+            "examples/AccessoryDecoderNmra"
+            "examples/CommandStation"
+            "examples/FunctionDecoderDummy"
+            "examples/LocomotiveDecoderDummy"
+            "examples/LocomotiveDecoderNmra"
+            "tests/DCCMessageTest"
+            "tests/EncodingTest"
+            "tests/InCircuitTest"
+            "tests/InCircuitSelfTest"
+            "tests/TxManagerTest"
+            "tests/EndToEndTest"
+            "tests/UseCases/01_AutomaticLogonRegistrationTest"
+            "tests/UseCases/02_BasicLocomotiveIdentificationTest"
+            "tests/UseCases/03_BlockOccupancyReportingTest"
+            "tests/UseCases/10_VerifyingTurnoutPositionTest"
+          )
+
+          for sketch in "${SKETCHES[@]}"; do
+            echo "Compiling $sketch"
+            arduino-cli compile --fqbn rp2040:rp2040:rpipico --libraries="." "$sketch"
+            if [ $? -ne 0 ]; then
+              echo "Failed to compile $sketch"
+              exit 1
+            fi
+          done
