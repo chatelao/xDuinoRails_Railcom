@@ -39,4 +39,7 @@ jobs:
             - tests/InCircuitSelfTest
             - tests/TxManagerTest
             - tests/EndToEndTest
-            - tests/10_VerifyingTurnoutPositionTest
+            - tests/UseCases/01_AutomaticLogonRegistrationTest
+            - tests/UseCases/02_BasicLocomotiveIdentificationTest
+            - tests/UseCases/03_BlockOccupancyReportingTest
+            - tests/UseCases/10_VerifyingTurnoutPositionTest
