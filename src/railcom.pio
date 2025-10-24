@@ -10,7 +10,8 @@
     set pins, 1 side 0      ; 2. Start the cutout (set pin high)
     mov x, osr side 0       ; 3. Load the loop counter from the OSR (pushed value)
 delay_loop:
-    jmp x--, delay_loop side 0 [31] ; 4. Loop, each iteration takes 32 cycles
+    nop side 0 [15]
+    jmp x--, delay_loop side 0 [15] ; 4. Loop, each iteration takes 32 cycles
     set pins, 0 side 0      ; 5. End the cutout (set pin low)
     irq 0 side 0            ; 6. Signal the CPU that the cutout is complete
 .wrap

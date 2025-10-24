@@ -4,6 +4,7 @@
 #include "pico/stdlib.h"
 #include <cstring>
 #include "RailcomEncoding.h"
+#include "RailcomProtocolDefs.h"
 
 RailcomTx* pio_sender_instance = nullptr;
 
@@ -22,7 +23,7 @@ RailcomTx::RailcomTx(uart_inst_t* uart, uint tx_pin, uint pio_pin)
 }
 
 void RailcomTx::begin() {
-    uart_init(_uart, 115200);
+    uart_init(_uart, UART_DCC_BAUDRATE);
     gpio_set_function(_tx_pin, GPIO_FUNC_UART);
     pio_init();
 }
@@ -30,9 +31,7 @@ void RailcomTx::begin() {
 void RailcomTx::end() {
     uart_deinit(_uart);
     pio_sm_set_enabled(_pio, _sm, false);
-    if (pio_can_remove_program(_pio, &railcom_cutout_program)) {
-        pio_remove_program(_pio, &railcom_cutout_program, _offset);
-    }
+    pio_remove_program(_pio, &railcom_cutout_program, _offset);
     pio_sm_unclaim(_pio, _sm);
 }
 
@@ -53,7 +52,7 @@ void RailcomTx::send_dcc_with_cutout(const DCCMessage& dccMsg) {
     uart_tx_wait_blocking(_uart);
 
     gpio_set_function(_pio_pin, GPIO_FUNC_PIO0);
-    pio_sm_put_blocking(_pio, _sm, 1772);
+    pio_sm_put_blocking(_pio, _sm, PIO_CUTOUT_PULSE_WIDTH);
     pio_sm_set_enabled(_pio, _sm, true);
 }
 
@@ -66,13 +65,13 @@ void RailcomTx::task() {
     if (_send_pending) {
         _send_pending = false;
 
-        uart_set_baudrate(_uart, 250000);
+        uart_set_baudrate(_uart, UART_RAILCOM_BAUDRATE);
         gpio_set_function(_tx_pin, GPIO_FUNC_UART);
 
         send_queued_messages();
         uart_tx_wait_blocking(_uart);
 
-        uart_set_baudrate(_uart, 115200);
+        uart_set_baudrate(_uart, UART_DCC_BAUDRATE);
     }
 }
 
@@ -83,7 +82,7 @@ void RailcomTx::send_queued_messages() {
         _ch1_queue.pop();
     }
 
-    sleep_us(193);
+    sleep_us(RAILCOM_CH2_DELAY_US);
 
     while (!_ch2_queue.empty()) {
         const auto& msg = _ch2_queue.front();
@@ -93,18 +92,7 @@ void RailcomTx::send_queued_messages() {
 }
 
 void RailcomTx::sendDatagram(uint8_t channel, RailcomID id, uint32_t payload, uint8_t payloadBits) {
-    uint8_t totalBits = 4 + payloadBits;
-    uint8_t numBytes = (totalBits + 5) / 6;
-    uint64_t data = ((uint64_t)static_cast<uint8_t>(id) << payloadBits) | payload;
-
-    std::vector<uint8_t> encodedBytes;
-    int currentBit = (numBytes * 6) - 6;
-    for (int i = 0; i < numBytes; ++i) {
-        uint8_t chunk = (data >> currentBit) & 0x3F;
-        encodedBytes.push_back(RailcomEncoding::encode4of8(chunk));
-        currentBit -= 6;
-    }
-    queue_message(channel, encodedBytes);
+    queue_message(channel, RailcomEncoding::encodeDatagram(id, payload, payloadBits));
 }
 
 void RailcomTx::sendPomResponse(uint8_t cvValue) {
@@ -112,7 +100,7 @@ void RailcomTx::sendPomResponse(uint8_t cvValue) {
 }
 
 void RailcomTx::sendAddress(uint16_t address) {
-    if (address >= 1 && address <= 127) { // Short
+    if (address >= MIN_SHORT_ADDRESS && address <= MAX_SHORT_ADDRESS) { // Short
         sendDatagram(1, RailcomID::ADR_HIGH, address, 7);
     } else { // Long
         if (_long_address_alternator) {
@@ -130,7 +118,7 @@ void RailcomTx::sendDynamicData(uint8_t subIndex, uint8_t value) {
 }
 
 void RailcomTx::sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4]) {
-    if (sequence > 3) return;
+    if (sequence > MAX_XPOM_SEQUENCE) return;
     RailcomID id = static_cast<RailcomID>(static_cast<uint8_t>(RailcomID::XPOM_0) + sequence);
     uint32_t payload = (uint32_t)cvValues[0] << 24 | (uint32_t)cvValues[1] << 16 | (uint32_t)cvValues[2] << 8  | cvValues[3];
     sendDatagram(2, id, payload, 32);
@@ -139,16 +127,12 @@ void RailcomTx::sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4]) {
 void RailcomTx::handleRerailingSearch(uint16_t address, uint32_t secondsSincePowerOn) {
     sendDatagram(2, RailcomID::ADR_HIGH, (address >> 8) & 0x3F, 6);
     sendDatagram(2, RailcomID::ADR_LOW, address & 0xFF, 8);
-    sendDatagram(2, RailcomID::RERAIL, secondsSincePowerOn > 255 ? 255 : secondsSincePowerOn, 8);
+    sendDatagram(2, RailcomID::RERAIL, secondsSincePowerOn > MAX_RERAIL_SECONDS ? MAX_RERAIL_SECONDS : secondsSincePowerOn, 8);
 }
 
 void RailcomTx::sendServiceRequest(uint16_t accessoryAddress, bool isExtended) {
-    if (accessoryAddress > 2047) return;
-    uint16_t payload = (accessoryAddress & 0x7FF) | (isExtended ? 0x800 : 0x000);
-    std::vector<uint8_t> encodedBytes;
-    encodedBytes.push_back(RailcomEncoding::encode4of8((payload >> 6) & 0x3F));
-    encodedBytes.push_back(RailcomEncoding::encode4of8(payload & 0x3F));
-    queue_message(1, encodedBytes);
+    if (accessoryAddress > MAX_ACCESSORY_ADDRESS) return;
+    queue_message(1, RailcomEncoding::encodeServiceRequest(accessoryAddress, isExtended));
 }
 
 void RailcomTx::sendStatus1(uint8_t status) {
@@ -187,7 +171,7 @@ void RailcomTx::sendDecoderState(uint8_t changeFlags, uint16_t changeCount, uint
 }
 
 void RailcomTx::sendDataSpace(const uint8_t* data, size_t len, uint8_t dataSpaceNum) {
-    uint8_t header = (len & 0x1F);
+    uint8_t header = (len & DATASPACE_LEN_MASK);
     uint8_t buffer[33];
     buffer[0] = header;
     memcpy(buffer + 1, data, len);
@@ -218,13 +202,7 @@ void RailcomTx::sendNack() {
 }
 
 void RailcomTx::sendBundledDatagram(uint64_t payload) {
-    std::vector<uint8_t> encodedBytes;
-    int currentBit = 42;
-    for (int i = 0; i < 8; ++i) {
-        uint8_t chunk = (payload >> currentBit) & 0x3F;
-        encodedBytes.push_back(RailcomEncoding::encode4of8(chunk));
-        currentBit -= 6;
-    }
+    std::vector<uint8_t> encodedBytes = RailcomEncoding::encodeBundledDatagram(payload);
     queue_message(1, std::vector<uint8_t>(encodedBytes.begin(), encodedBytes.begin() + 2));
     queue_message(2, std::vector<uint8_t>(encodedBytes.begin() + 2, encodedBytes.end()));
 }

@@ -34,9 +34,16 @@ test(Encoding, decodeInvalid) {
 // decoded correctly. These are special signals that do not represent regular
 // data values.
 test(Encoding, decodeSpecialValues) {
-    assertEqual(RailcomEncoding::decode4of8(RailcomEncoding::ACK1), 0x100);
-    assertEqual(RailcomEncoding::decode4of8(RailcomEncoding::ACK2), 0x100);
-    assertEqual(RailcomEncoding::decode4of8(RailcomEncoding::NACK), 0x101);
+    assertEqual(RailcomEncoding::decode4of8(RAILCOM_ACK1), 0x100);
+    assertEqual(RailcomEncoding::decode4of8(RAILCOM_ACK2), 0x100);
+    assertEqual(RailcomEncoding::decode4of8(RAILCOM_NACK), 0x101);
+}
+
+test(Encoding, encodeDatagram) {
+    std::vector<uint8_t> encoded = RailcomEncoding::encodeDatagram(RailcomID::POM, 0xAB, 8);
+    assertEqual(encoded.size(), 2);
+    assertEqual(encoded[0], RailcomEncoding::encode4of8(0b000010));
+    assertEqual(encoded[1], RailcomEncoding::encode4of8(0b101011));
 }
 
 void setup() {
