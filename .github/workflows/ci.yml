@@ -25,6 +25,7 @@ jobs:
           fqbn: rp2040:rp2040:rpipico
           library-manager-update: true
           libraries: |
+            - path: .
             - name: AUnit
             - name: NmraDcc
           sketch-paths: |
