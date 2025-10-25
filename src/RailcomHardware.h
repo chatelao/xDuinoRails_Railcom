@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <vector>
 #include "Railcom.h"
 
 class RailcomHardware {

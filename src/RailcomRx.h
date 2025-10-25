@@ -10,13 +10,11 @@ public:
     RailcomRx(RailcomHardware* hardware);
     void begin();
     void task();
-    bool available();
-    RailcomMessage getMessage();
+    RailcomMessage* readMessage();
 
 private:
-    enum class State { IDLE, READING };
-    State _state;
-    std::vector<uint8_t> _buffer;
+    bool read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms);
+    RailcomMessage* parseMessage(const std::vector<uint8_t>& buffer);
     RailcomHardware* _hardware;
 };
 

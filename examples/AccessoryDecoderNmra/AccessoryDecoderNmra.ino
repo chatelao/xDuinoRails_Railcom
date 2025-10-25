@@ -1,12 +1,14 @@
 #include <NmraDcc.h>
 #include "Railcom.h"
 #include "RailcomTx.h"
+#include "RP2040RailcomHardware.h"
 #include "DecoderStateMachine.h"
 
 #define DCC_PIN 2
 
 NmraDcc Dcc;
-RailcomTx railcomTx(uart0, 1, 0);
+RP2040RailcomHardware hardware(uart0, 1, 0, 3); // RX pin 3 is a placeholder
+RailcomTx railcomTx(&hardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::ACCESSORY, 0);
 
 void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputPower) {

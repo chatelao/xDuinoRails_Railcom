@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include <NmraDcc.h>
 #include "RailcomTx.h"
+#include "RP2040RailcomHardware.h"
 #include "DecoderStateMachine.h"
 
 #define DCC_PIN 2
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 
-RailcomTx railcomTx(uart0, 0, 1);
+RP2040RailcomHardware hardware(uart0, 0, 1, 3); // RX pin 3 is a placeholder
+RailcomTx railcomTx(&hardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
 NmraDcc Dcc;
 

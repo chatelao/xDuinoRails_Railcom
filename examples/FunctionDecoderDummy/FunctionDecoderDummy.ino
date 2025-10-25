@@ -1,10 +1,12 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
+#include "RP2040RailcomHardware.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t DECODER_ADDRESS = 1234;
 
-RailcomTx railcomTx(uart0, 0, 1);
+RP2040RailcomHardware hardware(uart0, 0, 1, 2); // RX pin 2 is a placeholder
+RailcomTx railcomTx(&hardware);
 // Note: We'll re-use the LOCOMOTIVE type for the function decoder
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS);
 
