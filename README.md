@@ -4,15 +4,16 @@ An Arduino library for encoding and decoding RailCom messages on the RP2040, com
 
 ```
 DCC Zentrale (Mikrocontroller)        Decoder (Mikrocontroller)
-+--------------------+                 +--------------------+
-|                    |                 |                    |
-|          TX ------->----------------->------ RX           |
-|       (DCC Signal) |                 |    (DCC Signal)    |
-|                    |                 |                    |
-|          RX =======<=================<====== TX           |
-|    (RailCom Signal)|                 | (RailCom Signal)   |
-|                    |                 |                    |
-+--------------------+                 +--------------------+
++----------------------+                 +--------------------+
+|                      |                 |                    |
+|    DCC_TX_PIN ------->----------------->------ DCC_RX_PIN   |
+|         (DCC Signal) |                 |    (DCC Signal)    |
+|                      |                 |                    |
+| RC_CUTOUT_PIN ------->-------          |                    |
+| RC_RX_PIN ===========<=================<====== RC_TX_PIN    |
+|    (  RailCom Signal)|                 | (RailCom Signal)   |
+|                      |                 |                    |
++----------------------+                 +--------------------+
 ```
 
 ## Features
