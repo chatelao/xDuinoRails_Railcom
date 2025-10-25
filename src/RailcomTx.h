@@ -45,7 +45,7 @@ private:
     friend void railcom_pio_irq_handler();
     void pio_init();
     void send_queued_messages();
-    void queue_message(uint8_t channel, const std::vector<uint8_t>& message);
+    virtual void queue_message(uint8_t channel, const std::vector<uint8_t>& message);
 
     void sendDatagram(uint8_t channel, RailcomID id, uint32_t payload, uint8_t payloadBits);
     void sendBundledDatagram(uint64_t payload);

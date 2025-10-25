@@ -1,4 +1,4 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "RailcomRx.h"
@@ -36,7 +36,7 @@ RailcomMessage* sendAndReceive() {
 }
 
 void loop() {
-    aunit::TestRunner::run();
+    Test::run();
 }
 
 // RCN-217, Chapter 7.2.1

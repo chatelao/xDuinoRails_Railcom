@@ -1,8 +1,8 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "RailcomTx.h"
-#include "mocks/MockRailcomTx.h"
+#include "../mocks/MockRailcomTx.h"
 
-test(TxManager, queuePomResponse) {
+test(TxManager_queuePomResponse) {
     MockRailcomTx mockTx;
 
     mockTx.sendPomResponse(123);
@@ -19,7 +19,7 @@ test(TxManager, queuePomResponse) {
 void setup() {
     Serial.begin(115200);
     while (!Serial);
-    TestRunner::run();
+    Test::run();
 }
 
 void loop() {}

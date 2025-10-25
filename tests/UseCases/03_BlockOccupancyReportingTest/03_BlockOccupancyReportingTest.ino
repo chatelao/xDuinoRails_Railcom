@@ -1,4 +1,4 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "Railcom.h"
 #include "../mocks/MockRailcomTx.h"
 #include "DecoderStateMachine.h"
@@ -10,7 +10,7 @@
 
 const uint16_t LOCOMOTIVE_ADDRESS = 42;
 
-test(BlockOccupancyReporting, sendsAdrOnSpeedCommand) {
+test(BlockOccupancyReporting_sendsAdrOnSpeedCommand) {
   MockRailcomTx railcom_tx;
   DecoderStateMachine state_machine(railcom_tx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
 
@@ -26,7 +26,7 @@ test(BlockOccupancyReporting, sendsAdrOnSpeedCommand) {
 void setup() {
   Serial.begin(115200);
   while (!Serial);
-  TestRunner::run();
+  Test::run();
 }
 
 void loop() {

@@ -1,7 +1,7 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "Railcom.h"
 
-test(DCCMessage, getAddressAndCommand) {
+test(DCCMessage_getAddressAndCommand) {
   uint8_t data[] = {0x12, 0x34, 0x56};
   DCCMessage msg(data, sizeof(data));
 
@@ -20,7 +20,7 @@ test(DCCMessage, getAddressAndCommand) {
 void setup() {
   Serial.begin(115200);
   while (!Serial);
-  TestRunner::run();
+  Test::run();
 }
 
 void loop() {

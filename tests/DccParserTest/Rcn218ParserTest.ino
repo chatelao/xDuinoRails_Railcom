@@ -1,7 +1,7 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "RailcomDccParser.h"
 
-test(Rcn218Parser, LogonEnable) {
+test(Rcn218Parser_LogonEnable) {
     RailcomDccParser parser;
     bool callback_fired = false;
 
@@ -19,7 +19,7 @@ test(Rcn218Parser, LogonEnable) {
     assertTrue(callback_fired);
 }
 
-test(Rcn218Parser, Select) {
+test(Rcn218Parser_Select) {
     RailcomDccParser parser;
     bool callback_fired = false;
 
@@ -35,4 +35,13 @@ test(Rcn218Parser, Select) {
     parser.parse(msg);
 
     assertTrue(callback_fired);
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial);
+  Test::run();
+}
+
+void loop() {
 }

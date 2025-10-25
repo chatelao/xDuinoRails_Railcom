@@ -1,6 +1,6 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "Railcom.h"
-#include "../mocks/MockRailcomTx.h"
+#include "../mocks/MockRailcomTx.hh"
 #include "DecoderStateMachine.h"
 #include "../mocks/MockDcc.h"
 
@@ -11,7 +11,7 @@
 const uint16_t MANUFACTURER_ID = 123;
 const uint32_t PRODUCT_ID = 456789;
 
-test(AutomaticLogonRegistration, registersWithCommandStation) {
+test(AutomaticLogonRegistration_registersWithCommandStation) {
   MockRailcomTx railcom_tx;
   DecoderStateMachine state_machine(railcom_tx, DecoderType::LOCOMOTIVE, 0, MANUFACTURER_ID, PRODUCT_ID);
 
@@ -56,7 +56,7 @@ test(AutomaticLogonRegistration, registersWithCommandStation) {
 void setup() {
   Serial.begin(115200);
   while (!Serial);
-  TestRunner::run();
+  Test::run();
 }
 
 void loop() {

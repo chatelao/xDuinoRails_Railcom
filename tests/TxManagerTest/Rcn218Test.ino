@@ -1,4 +1,4 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "RailcomTx.h"
 
 // Mock RailcomTx to capture queued messages
@@ -15,7 +15,7 @@ public:
     std::vector<uint8_t> last_data;
 };
 
-test(Rcn218, SendDecoderUnique) {
+test(Rcn218_SendDecoderUnique) {
     MockRailcomTx mockTx;
 
     mockTx.sendDecoderUnique(0x0123, 0x456789AB);
@@ -29,7 +29,7 @@ test(Rcn218, SendDecoderUnique) {
     assertEqual(mockTx.last_data[0], 0b10011100);
 }
 
-test(Rcn218, SendDecoderState) {
+test(Rcn218_SendDecoderState) {
     MockRailcomTx mockTx;
 
     mockTx.sendDecoderState(0xAB, 0x1234, 0x5678);
@@ -38,4 +38,13 @@ test(Rcn218, SendDecoderState) {
     // ID=13 (0xD), Flags=0xAB, Count=0x1234, Caps=0x5678
     // First 6 bits: 110110 (0x36) -> encoded: 0b01101001
     assertEqual(mockTx.last_data[0], 0b01101001);
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial);
+  Test::run();
+}
+
+void loop() {
 }

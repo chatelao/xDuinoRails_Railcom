@@ -1,4 +1,4 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "Railcom.h"
 #include "../mocks/MockRailcomTx.h"
 #include "DecoderStateMachine.h"
@@ -11,7 +11,7 @@
 const uint16_t ACCESSORY_ADDRESS = 101;
 const bool THROWN = true;
 
-test(VerifyingTurnoutPosition, sendsStat1OnAccessoryCommand) {
+test(VerifyingTurnoutPosition_sendsStat1OnAccessoryCommand) {
   MockRailcomTx railcom_tx;
   DecoderStateMachine state_machine(railcom_tx, DecoderType::ACCESSORY, ACCESSORY_ADDRESS);
 
@@ -27,7 +27,7 @@ test(VerifyingTurnoutPosition, sendsStat1OnAccessoryCommand) {
 void setup() {
   Serial.begin(115200);
   while (!Serial);
-  TestRunner::run();
+  Test::run();
 }
 
 void loop() {

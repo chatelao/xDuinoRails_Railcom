@@ -1,26 +1,23 @@
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "RailcomTx.h"
-#include "RailcomReceiver.h"
-#include "RailcomRxManager.h"
+#include "RailcomRx.h"
 
 // --- Test Environment Setup ---
 RailcomTx cs_railcomTx(uart0, 0, 1);
-RailcomReceiver cs_receiver(uart0, 1);
-RailcomRxManager cs_rx_manager(cs_receiver);
+RailcomRx cs_railcomRx(uart0, 1);
 
 const uint16_t DECODER_ADDRESS = 4098;
 RailcomTx decoder_railcomTx(uart1, 4, 5);
-RailcomReceiver decoder_receiver(uart1, 5);
-// Note: We don't need a decoder_rx_manager for these tests
+RailcomRx decoder_railcomRx(uart1, 5);
 
 void setup() {
     Serial.begin(115200);
     while(!Serial);
     cs_railcomTx.begin();
-    cs_receiver.begin();
+    cs_railcomRx.begin();
     decoder_railcomTx.begin();
-    decoder_receiver.begin();
-    TestRunner::run();
+    decoder_railcomRx.begin();
+    Test::run();
 }
 
 void loop() {
@@ -38,50 +35,50 @@ void trigger_cutout() {
 
 // --- Test Cases ---
 
-test(EndToEnd, pomRead) {
+test(EndToEnd_pomRead) {
     decoder_railcomTx.sendPomResponse(151);
     trigger_cutout();
-    RailcomMessage* msg = cs_rx_manager.readMessage();
+    RailcomMessage* msg = cs_railcomRx.readMessage();
     assertNotNull(msg);
     assertEqual((int)msg->id, (int)RailcomID::POM);
     assertEqual(static_cast<PomMessage*>(msg)->cvValue, 151);
 }
 
-test(EndToEnd, addressBroadcastLong) {
+test(EndToEnd_addressBroadcastLong) {
     decoder_railcomTx.sendAddress(DECODER_ADDRESS);
     trigger_cutout();
-    RailcomMessage* msg1 = cs_rx_manager.readMessage();
+    RailcomMessage* msg1 = cs_railcomRx.readMessage();
     assertNotNull(msg1);
     assertEqual((int)msg1->id, (int)RailcomID::ADR_HIGH);
 
     decoder_railcomTx.sendAddress(DECODER_ADDRESS);
     trigger_cutout();
-    RailcomMessage* msg2 = cs_rx_manager.readMessage();
+    RailcomMessage* msg2 = cs_railcomRx.readMessage();
     assertNotNull(msg2);
     assertEqual((int)msg2->id, (int)RailcomID::ADR_LOW);
 }
 
-test(EndToEnd, dynamicData) {
+test(EndToEnd_dynamicData) {
     decoder_railcomTx.sendDynamicData(5, 75);
     trigger_cutout();
-    RailcomMessage* msg = cs_rx_manager.readMessage();
+    RailcomMessage* msg = cs_railcomRx.readMessage();
     assertNotNull(msg);
     assertEqual((int)msg->id, (int)RailcomID::DYN);
     assertEqual(static_cast<DynMessage*>(msg)->subIndex, 5);
     assertEqual(static_cast<DynMessage*>(msg)->value, 75);
 }
 
-test(EndToEnd, serviceRequest) {
+test(EndToEnd_serviceRequest) {
     decoder_railcomTx.sendServiceRequest(123, false);
     trigger_cutout();
-    RailcomMessage* msg = cs_rx_manager.readMessage();
+    RailcomMessage* msg = cs_railcomRx.readMessage();
     assertNotNull(msg);
     // The parser re-uses the AdrMessage struct for SRQs
     assertEqual((int)msg->id, (int)RailcomID::ADR_LOW);
     assertEqual(static_cast<AdrMessage*>(msg)->address, 123);
 }
 
-test(EndToEnd, rcn218Logon) {
+test(EndToEnd_rcn218Logon) {
     // 1. CS sends LOGON_ENABLE
     uint8_t logon_enable[] = { RCN218::DCC_A_ADDRESS, RCN218::CMD_LOGON_ENABLE | 1, 0x12, 0x34, 0x56 };
     DCCMessage logon_msg(logon_enable, sizeof(logon_enable));
@@ -94,7 +91,7 @@ test(EndToEnd, rcn218Logon) {
     delay(10);
 
     // 3. CS should receive DECODER_UNIQUE
-    RailcomMessage* unique_msg = cs_rx_manager.readMessage();
+    RailcomMessage* unique_msg = cs_railcomRx.readMessage();
     assertNotNull(unique_msg);
     assertEqual((int)unique_msg->id, (int)RailcomID::DECODER_UNIQUE);
     DecoderUniqueMessage* du_msg = static_cast<DecoderUniqueMessage*>(unique_msg);
@@ -113,7 +110,7 @@ test(EndToEnd, rcn218Logon) {
     delay(10);
 
     // 6. CS should receive DECODER_STATE
-    RailcomMessage* state_msg = cs_rx_manager.readMessage();
+    RailcomMessage* state_msg = cs_railcomRx.readMessage();
     assertNotNull(state_msg);
     assertEqual((int)state_msg->id, (int)RailcomID::DECODER_STATE);
     DecoderStateMessage* ds_msg = static_cast<DecoderStateMessage*>(state_msg);

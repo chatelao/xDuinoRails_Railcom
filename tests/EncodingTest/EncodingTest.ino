@@ -6,13 +6,13 @@
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include <AUnit.h>
+#include <ArduinoUnit.h>
 #include "RailcomEncoding.h"
 
 // According to RCN-217, chapter 2.5, the Railcom signal is secured with a
 // 4-out-of-8 coding. This test verifies that all 6-bit values can be encoded
 // and decoded correctly.
-test(Encoding, encodeDecodeRoundtrip) {
+test(Encoding_encodeDecodeRoundtrip) {
     for (uint8_t i = 0; i < 64; ++i) {
         uint8_t encoded = RailcomEncoding::encode4of8(i);
         int16_t decoded = RailcomEncoding::decode4of8(encoded);
@@ -23,7 +23,7 @@ test(Encoding, encodeDecodeRoundtrip) {
 // This test verifies that bytes with an incorrect Hamming weight (i.e. not
 // exactly four '1's) are rejected by the decoder. It also checks that a byte
 // with the correct weight but not in the lookup table is rejected.
-test(Encoding, decodeInvalid) {
+test(Encoding_decodeInvalid) {
     // Test bytes with incorrect Hamming weight
     assertEqual(RailcomEncoding::decode4of8(0b00000000), -1); // Weight 0
     assertEqual(RailcomEncoding::decode4of8(0b11111111), -1); // Weight 8
@@ -33,13 +33,13 @@ test(Encoding, decodeInvalid) {
 // This test verifies that the special values for ACK1, ACK2, and NACK are
 // decoded correctly. These are special signals that do not represent regular
 // data values.
-test(Encoding, decodeSpecialValues) {
+test(Encoding_decodeSpecialValues) {
     assertEqual(RailcomEncoding::decode4of8(RAILCOM_ACK1), 0x100);
     assertEqual(RailcomEncoding::decode4of8(RAILCOM_ACK2), 0x100);
     assertEqual(RailcomEncoding::decode4of8(RAILCOM_NACK), 0x101);
 }
 
-test(Encoding, encodeDatagram) {
+test(Encoding_encodeDatagram) {
     std::vector<uint8_t> encoded = RailcomEncoding::encodeDatagram(RailcomID::POM, 0xAB, 8);
     assertEqual(encoded.size(), 2);
     assertEqual(encoded[0], RailcomEncoding::encode4of8(0b000010));
@@ -49,7 +49,7 @@ test(Encoding, encodeDatagram) {
 void setup() {
     Serial.begin(115200);
     while (!Serial);
-    TestRunner::run();
+    Test::run();
 }
 
 void loop() {
