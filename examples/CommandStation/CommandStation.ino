@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
-#include "RailcomReceiver.h"
+#include "RailcomRx.h"
 #include "RailcomRxManager.h"
 
 RailcomTx railcomTx(uart0, 0, 1);
