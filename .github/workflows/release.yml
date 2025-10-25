@@ -1,0 +1,58 @@
+name: Release Binaries
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+
+      - name: Install RP2040 Platform and Libraries
+        run: |
+          arduino-cli config init
+          arduino-cli config set board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+          arduino-cli core update-index
+          arduino-cli core install rp2040:rp2040
+          arduino-cli lib install NmraDcc
+
+      - name: Compile All Examples
+        run: |
+          SKETCHES=(
+            "examples/AccessoryDecoderDummy"
+            "examples/AccessoryDecoderNmra"
+            "examples/CommandStation"
+            "examples/FunctionDecoderDummy"
+            "examples/LocomotiveDecoderDummy"
+            "examples/LocomotiveDecoderNmra"
+          )
+
+          for sketch in "${SKETCHES[@]}"; do
+            echo "Compiling $sketch"
+            arduino-cli compile --fqbn rp2040:rp2040:rpipico --libraries="." --export-binaries "$sketch"
+            if [ $? -ne 0 ]; then
+              echo "Failed to compile $sketch"
+              exit 1
+            fi
+          done
+
+      - name: Upload Release Assets
+        run: |
+          for sketch in examples/*; do
+            if [ -d "$sketch" ]; then
+              sketch_name=$(basename "$sketch")
+              asset_path="$sketch/build/rp2040.rp2040.rpipico/$sketch_name.ino.uf2"
+              if [ -f "$asset_path" ]; then
+                gh release upload ${{ github.event.release.tag_name }} "$asset_path" --clobber
+              fi
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
