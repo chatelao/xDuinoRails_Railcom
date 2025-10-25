@@ -9,12 +9,12 @@
   },
   "authors": [
     {
-      "name": "Jules",
-      "email": "jules@jules.com",
+      "name": "Olivier Châtelain-Gmür",
+      "email": "olivier.chatelain@gmail.com",
       "maintainer": true
     }
   ],
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "frameworks": "arduino",
   "platforms": "rp2040",
   "dependencies": [
