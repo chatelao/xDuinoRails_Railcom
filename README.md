@@ -2,6 +2,19 @@
 
 An Arduino library for encoding and decoding RailCom messages on the RP2040, compliant with the RCN-217 specification.
 
+```
+DCC Zentrale (Mikrocontroller)        Decoder (Mikrocontroller)
++--------------------+                 +--------------------+
+|                    |                 |                    |
+|          TX ------->----------------->------ RX           |
+|       (DCC Signal) |                 |    (DCC Signal)    |
+|                    |                 |                    |
+|          RX =======<=================<====== TX           |
+|    (RailCom Signal)|                 | (RailCom Signal)   |
+|                    |                 |                    |
++--------------------+                 +--------------------+
+```
+
 ## Features
 
 -   **High-Level API:** `RailcomTx` (for decoders) and `RailcomRx` (for detectors/centrales) classes simplify creating, sending, and parsing RCN-217 messages.
