@@ -1,24 +1,25 @@
 #include "RailcomRx.h"
 #include <cstring>
+#include "pico/stdlib.h"
 
-RailcomRx::RailcomRx(uart_inst_t* uart, uint rx_pin)
-    : _uart(uart), _rx_pin(rx_pin) {}
+RailcomRx::RailcomRx(RailcomHardware* hardware)
+    : _hardware(hardware) {}
 
 void RailcomRx::begin() {
-    uart_init(_uart, 250000);
-    gpio_set_function(_rx_pin, GPIO_FUNC_UART);
+    _hardware->begin();
 }
 
-void RailcomRx::end() {
-    uart_deinit(_uart);
+void RailcomRx::task() {
+    // task() is not used in the restored logic,
+    // so this is intentionally left empty.
 }
 
 bool RailcomRx::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
     buffer.clear();
     uint32_t start = millis();
     while (millis() - start < timeout_ms) {
-        if (uart_is_readable(_uart)) {
-            buffer.push_back(uart_getc(_uart));
+        if (_hardware->available()) {
+            buffer.push_back(_hardware->read());
         } else if (!buffer.empty()) {
             return true;
         }
