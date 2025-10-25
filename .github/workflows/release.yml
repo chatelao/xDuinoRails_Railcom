@@ -43,6 +43,14 @@ jobs:
             fi
           done
 
+      - name: Package Library for Arduino
+        run: |
+          mkdir -p staging/RP2040-RailCom
+          cp -r src examples library.json staging/RP2040-RailCom/
+          cd staging
+          zip -r ../RP2040-RailCom-${{ github.event.release.tag_name }}.zip .
+          cd ..
+
       - name: Upload Release Assets
         run: |
           for sketch in examples/*; do
@@ -54,5 +62,6 @@ jobs:
               fi
             fi
           done
+          gh release upload ${{ github.event.release.tag_name }} RP2040-RailCom-${{ github.event.release.tag_name }}.zip --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
