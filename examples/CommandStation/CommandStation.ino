@@ -1,15 +1,17 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "RailcomRx.h"
+#include "RP2040RailcomHardware.h"
 
-RailcomTx railcomTx(uart0, 0, 1);
-RailcomRx railcomRx(uart0, 1);
+RP2040RailcomHardware hardware(uart0, 0, 1, 1);
+RailcomTx railcomTx(&hardware);
+RailcomRx railcomRx(&hardware);
 
 void setup() {
     Serial.begin(115200);
     while (!Serial);
     railcomTx.begin();
-    railcomRx.begin();
+    // railcomRx.begin(); No longer needed as hardware.begin() is called in railcomTx.begin()
     Serial.println("Command Station Example (Refactored)");
     Serial.println("Enter 'p <addr> <cv>' to send POM Read");
 }

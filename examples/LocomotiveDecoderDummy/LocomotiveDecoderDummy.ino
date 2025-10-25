@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "Railcom.h"
 #include "RailcomTx.h"
+#include "RP2040RailcomHardware.h"
 #include "DecoderStateMachine.h"
 
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
@@ -10,7 +11,8 @@ const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 // const uint32_t PRODUCT_ID = 0x456789AB;
 // DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
 
-RailcomTx railcomTx(uart0, 0, 1);
+RP2040RailcomHardware hardware(uart0, 0, 1, 2); // RX pin 2 is a placeholder
+RailcomTx railcomTx(&hardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, 0, 0);
 
 unsigned long lastDccPacketTime = 0;
