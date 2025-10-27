@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Railcom Decoder Tests</title>
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.20.0.css">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <script src="https://code.jquery.com/qunit/qunit-2.20.0.js"></script>
+  <script src="script.js"></script>
+  <script>
+    QUnit.module('Railcom Decoding', function() {
+      QUnit.test('decode4of8', function(assert) {
+        assert.equal(decode4of8(0x0F), 0, 'Test case 0');
+        assert.equal(decode4of8(0x17), 1, 'Test case 1');
+        assert.equal(decode4of8(0x1B), 2, 'Test case 2');
+        assert.equal(decode4of8(0x1D), 3, 'Test case 3');
+        assert.equal(decode4of8(0x1E), 4, 'Test case 4');
+        assert.equal(decode4of8(0x27), 5, 'Test case 5');
+        assert.equal(decode4of8(0x2B), 6, 'Test case 6');
+        assert.equal(decode4of8(0x2D), 7, 'Test case 7');
+        assert.equal(decode4of8(0x2E), 8, 'Test case 8');
+        assert.equal(decode4of8(0x33), 9, 'Test case 9');
+        assert.equal(decode4of8(0x35), 10, 'Test case 10');
+        assert.equal(decode4of8(0x36), 11, 'Test case 11');
+        assert.equal(decode4of8(0x39), 12, 'Test case 12');
+        assert.equal(decode4of8(0x3A), 13, 'Test case 13');
+        assert.equal(decode4of8(0x3C), 14, 'Test case 14');
+        assert.equal(decode4of8(0x47), 15, 'Test case 15');
+        assert.equal(decode4of8(0x4B), 16, 'Test case 16');
+        assert.equal(decode4of8(0x4D), 17, 'Test case 17');
+        assert.equal(decode4of8(0x4E), 18, 'Test case 18');
+        assert.equal(decode4of8(0x53), 19, 'Test case 19');
+        assert.equal(decode4of8(0x55), 20, 'Test case 20');
+        assert.equal(decode4of8(0x56), 21, 'Test case 21');
+        assert.equal(decode4of8(0x59), 22, 'Test case 22');
+        assert.equal(decode4of8(0x5A), 23, 'Test case 23');
+        assert.equal(decode4of8(0x5C), 24, 'Test case 24');
+        assert.equal(decode4of8(0x63), 25, 'Test case 25');
+        assert.equal(decode4of8(0x65), 26, 'Test case 26');
+        assert.equal(decode4of8(0x66), 27, 'Test case 27');
+        assert.equal(decode4of8(0x69), 28, 'Test case 28');
+        assert.equal(decode4of8(0x6A), 29, 'Test case 29');
+        assert.equal(decode4of8(0x6C), 30, 'Test case 30');
+        assert.equal(decode4of8(0x71), 31, 'Test case 31');
+        assert.equal(decode4of8(0x72), 32, 'Test case 32');
+        assert.equal(decode4of8(0x74), 33, 'Test case 33');
+        assert.equal(decode4of8(0x78), 34, 'Test case 34');
+        assert.equal(decode4of8(0x87), 35, 'Test case 35');
+        assert.equal(decode4of8(0x8B), 36, 'Test case 36');
+        assert.equal(decode4of8(0x8D), 37, 'Test case 37');
+        assert.equal(decode4of8(0x8E), 38, 'Test case 38');
+        assert.equal(decode4of8(0x93), 39, 'Test case 39');
+        assert.equal(decode4of8(0x95), 40, 'Test case 40');
+        assert.equal(decode4of8(0x96), 41, 'Test case 41');
+        assert.equal(decode4of8(0x99), 42, 'Test case 42');
+        assert.equal(decode4of8(0x9A), 43, 'Test case 43');
+        assert.equal(decode4of8(0x9C), 44, 'Test case 44');
+        assert.equal(decode4of8(0xA3), 45, 'Test case 45');
+        assert.equal(decode4of8(0xA5), 46, 'Test case 46');
+        assert.equal(decode4of8(0xA6), 47, 'Test case 47');
+        assert.equal(decode4of8(0xA9), 48, 'Test case 48');
+        assert.equal(decode4of8(0xAA), 49, 'Test case 49');
+        assert.equal(decode4of8(0xAC), 50, 'Test case 50');
+        assert.equal(decode4of8(0xB1), 51, 'Test case 51');
+        assert.equal(decode4of8(0xB2), 52, 'Test case 52');
+        assert.equal(decode4of8(0xB4), 53, 'Test case 53');
+        assert.equal(decode4of8(0xB8), 54, 'Test case 54');
+        assert.equal(decode4of8(0xC3), 55, 'Test case 55');
+        assert.equal(decode4of8(0xC5), 56, 'Test case 56');
+        assert.equal(decode4of8(0xC6), 57, 'Test case 57');
+        assert.equal(decode4of8(0xC9), 58, 'Test case 58');
+        assert.equal(decode4of8(0xCA), 59, 'Test case 59');
+        assert.equal(decode4of8(0xCC), 60, 'Test case 60');
+        assert.equal(decode4of8(0xD1), 61, 'Test case 61');
+        assert.equal(decode4of8(0xD2), 62, 'Test case 62');
+        assert.equal(decode4of8(0xD4), 63, 'Test case 63');
+        assert.equal(decode4of8(0xFF), undefined, "Invalid byte");
+      });
+      QUnit.test('decodePayload', function(assert) {
+        // Test Case 1: ADR_LOW, address 1234. The low byte is 210.
+        // ID=2, payload=210, 8 payload bits. Total bits = 12.
+        // Data = (2 << 8) | 210 = 722.
+        // 6-bit chunks of 722 are 11 and 18.
+        assert.equal(decodePayload([11, 18]), "ID: ADR_LOW\nPayload: 210", "ADR_LOW, address 1234");
+
+        // Test Case 2: POM, CV 5, value 128. Payload is 1408.
+        // ID=0, payload=1408, 18 payload bits. Total bits = 22, padded to 24 (4 chunks).
+        // Data = (0 << 18) | 1408 = 1408.
+        // 6-bit chunks of 1408 (padded to 24 bits) are 0, 0, 22, 0.
+        assert.equal(decodePayload([0, 0, 22, 0]), "ID: POM\nPayload: 1408", "POM, CV 5, value 128");
+      });
+    });
+  </script>
+</body>
+</html>

@@ -46,3 +46,8 @@ jobs:
               exit 1
             fi
           done
+      - name: Run Web App Tests
+        run: |
+          cd tools
+          npm install
+          npm test

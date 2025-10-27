@@ -55,3 +55,11 @@ For a detailed API reference, please see the **[API Documentation](docs/API_Refe
 
 ## Testing
 For a detailed overview of the testing strategy, please see the **[Testing Documentation](docs/Testing.md)**.
+
+## Tools
+
+### Railcom Decoder
+
+A simple web-based tool for decoding RailCom messages. You can paste hexadecimal or binary values and see the decoded 6-bit values and the full payload.
+
+**[Try it here!](https://chatelao.github.io/xDuinoRails_Railcom/)**
