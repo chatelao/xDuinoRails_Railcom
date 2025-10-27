@@ -8,13 +8,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
       - name: Cache Arduino Core
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.arduino15
           key: ${{ runner.os }}-rp2040-3.1.1
@@ -53,7 +53,7 @@ jobs:
             fi
           done
       - name: Cache node modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: tools/node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('tools/package-lock.json') }}
