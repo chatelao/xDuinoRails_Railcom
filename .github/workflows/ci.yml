@@ -8,20 +8,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
       - name: Cache Arduino Core
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.arduino15
           key: ${{ runner.os }}-rp2040-3.1.1
 
       - name: Install RP2040 Platform and Libraries
         run: |
-          arduino-cli config init
+          arduino-cli config init --overwrite
           arduino-cli config set board_manager.additional_urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           arduino-cli core update-index
           arduino-cli core install rp2040:rp2040@3.1.1
@@ -53,7 +53,7 @@ jobs:
             fi
           done
       - name: Cache node modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: tools/node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('tools/package-lock.json') }}
@@ -63,4 +63,5 @@ jobs:
         run: |
           cd tools
           npm install
+          npx puppeteer browsers install chrome
           npm test
