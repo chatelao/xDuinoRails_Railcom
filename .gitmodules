@@ -1,3 +1,6 @@
 [submodule "arduino-pico"]
 	path = arduino-pico
 	url = https://github.com/earlephilhower/arduino-pico.git
+[submodule "pio-uart"]
+	path = pio-uart
+	url = https://github.com/Sympatron/pio-uart.git
