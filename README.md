@@ -23,7 +23,7 @@ DCC Zentrale (Mikrocontroller)        Decoder (Mikrocontroller)
 -   **Decoder State Machine:** Includes a `DecoderStateMachine` class to demonstrate realistic response logic.
 -   **PIO-based Cutout:** Uses the RP2040's PIO to generate the precise RailCom cutout.
 -   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
--   **Web-based Bit Decoder:** A simple [web-based tool](https://chatelao.github.io/xDuinoRails_Railcom/) for decoding Railcom messages.
+-   **Web-based Bit Decoder:** A simple [web-based tool](https://chatelao.github.io/xDuinoRails_Railcom/index.html) for decoding Railcom messages.
 
 ## Real-World Use Cases
 
@@ -63,4 +63,4 @@ For a detailed overview of the testing strategy, please see the **[Testing Docum
 
 A simple web-based tool for decoding RailCom messages. You can paste hexadecimal or binary values and see the decoded 6-bit values and the full payload.
 
-**[Try it here!](https://chatelao.github.io/xDuinoRails_Railcom/)**
+**[Try it here!](https://chatelao.github.io/xDuinoRails_Railcom/index.html)**
