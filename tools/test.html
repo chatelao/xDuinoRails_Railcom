@@ -12,19 +12,19 @@
   <script src="script.js"></script>
   <script>
     QUnit.module('Railcom Decoding', function() {
-      QUnit.test('decode4of8 should correctly decode all values from the ENCODE_TABLE', function(assert) {
+      QUnit.test('decode6of8 should correctly decode all values from the ENCODE_TABLE', function(assert) {
         for (let i = 0; i < ENCODE_TABLE.length; i++) {
           const encodedValue = ENCODE_TABLE[i];
           const expectedDecodedValue = i;
-          assert.equal(decode4of8(encodedValue), expectedDecodedValue, `Test case for 0x${encodedValue.toString(16).toUpperCase()}`);
+          assert.equal(decode6of8(encodedValue), expectedDecodedValue, `Test case for 0x${encodedValue.toString(16).toUpperCase()}`);
         }
       });
 
-      QUnit.test('decode4of8 should return undefined for invalid bytes', function(assert) {
+      QUnit.test('decode6of8 should return undefined for invalid bytes', function(assert) {
         // Test a few values that are not in the ENCODE_TABLE
-        assert.equal(decode4of8(0x00), undefined, "Invalid byte 0x00");
-        assert.equal(decode4of8(0xFF), undefined, "Invalid byte 0xFF");
-        assert.equal(decode4of8(0x5B), undefined, "Invalid byte 0x5B");
+        assert.equal(decode6of8(0x00), undefined, "Invalid byte 0x00");
+        assert.equal(decode6of8(0xFF), undefined, "Invalid byte 0xFF");
+        assert.equal(decode6of8(0x5B), undefined, "Invalid byte 0x5B");
       });
       QUnit.test('decodePayload', function(assert) {
         // Test Case 1: ADR_LOW, address 1234. The low byte is 210.
