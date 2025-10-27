@@ -66,11 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!isNaN(byte)) {
         const decoded = decode4of8(byte);
+        const byteHex = byte.toString(16).toUpperCase().padStart(2, '0');
+        const byteBin = byte.toString(2).padStart(8, '0');
         if (decoded !== undefined) {
           decoded6bitValues.push(decoded);
-          output6bit.textContent += `0x${byte.toString(16).padStart(2, '0')} -> ${decoded.toString(10).padStart(2, '0')} (0b${decoded.toString(2).padStart(6, '0')})\n`;
+          output6bit.textContent += `0x${byteHex} (0b${byteBin}) -> ${decoded.toString(10).padStart(2, '0')} (0b${decoded.toString(2).padStart(6, '0')})\n`;
         } else {
-          output6bit.textContent += `0x${byte.toString(16).padStart(2, '0')} -> Error: Invalid 4of8 byte\n`;
+          output6bit.textContent += `0x${byteHex} (0b${byteBin}) -> Error: Invalid 4of8 byte\n`;
         }
       }
     }
