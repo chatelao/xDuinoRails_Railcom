@@ -15,6 +15,12 @@ jobs:
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
+      - name: Cache Arduino Core
+        uses: actions/cache@v3
+        with:
+          path: ~/.arduino15
+          key: ${{ runner.os }}-rp2040-3.1.1
+
       - name: Install RP2040 Platform and Libraries
         run: |
           arduino-cli config init
