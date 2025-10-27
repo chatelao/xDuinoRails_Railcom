@@ -63,4 +63,5 @@ jobs:
         run: |
           cd tools
           npm install
+          npx puppeteer browsers install chrome
           npm test
