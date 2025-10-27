@@ -80,22 +80,17 @@
         assert.equal(decode4of8(0xFF), undefined, "Invalid byte");
       });
       QUnit.test('decodePayload', function(assert) {
-        // ADR_LOW, address 1234
-        // ID = 2 (ADR_LOW)
-        // Payload = 1234
-        // Combined: 2 << 10 | 1234 = 2048 | 1234 = 3282
-        // 3282 = 0b110011010010
-        // 6-bit chunks: 0b110011, 0b010010 -> 51, 18
-        assert.equal(decodePayload([51, 18]), "ID: ADR_LOW\nPayload: 1234", "ADR_LOW");
+        // Test Case 1: ADR_LOW, address 1234. The low byte is 210.
+        // ID=2, payload=210, 8 payload bits. Total bits = 12.
+        // Data = (2 << 8) | 210 = 722.
+        // 6-bit chunks of 722 are 11 and 18.
+        assert.equal(decodePayload([11, 18]), "ID: ADR_LOW\nPayload: 210", "ADR_LOW, address 1234");
 
-        // POM, CV 5, value 128
-        // ID = 0 (POM)
-        // Payload: CV = 5 (10 bits), Value = 128 (8 bits)
-        // Payload = (5 << 8) | 128 = 1280 | 128 = 1408
-        // Combined: 0 << 18 | 1408 = 1408
-        // 1408 = 0b10110000000
-        // 6-bit chunks: 0b101100, 0b000000 -> 44, 0
-        assert.equal(decodePayload([44, 0]), "ID: POM\nPayload: 1408", "POM");
+        // Test Case 2: POM, CV 5, value 128. Payload is 1408.
+        // ID=0, payload=1408, 18 payload bits. Total bits = 22, padded to 24 (4 chunks).
+        // Data = (0 << 18) | 1408 = 1408.
+        // 6-bit chunks of 1408 (padded to 24 bits) are 0, 0, 22, 0.
+        assert.equal(decodePayload([0, 0, 22, 0]), "ID: POM\nPayload: 1408", "POM, CV 5, value 128");
       });
     });
   </script>
