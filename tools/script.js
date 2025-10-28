@@ -26,7 +26,7 @@ function decode6of8(byte) {
   return DECODE_TABLE.get(byte);
 }
 
-function decodePayload(decoded6bitValues) {
+function decodeRawId(decoded6bitValues) {
   if (decoded6bitValues.length === 0) {
     return "No data to decode.";
   }
@@ -37,6 +37,9 @@ function decodePayload(decoded6bitValues) {
   }
 
   const numBits = decoded6bitValues.length * 6;
+  if (numBits < 4) {
+    return "Error: Not enough bits for an ID.";
+  }
   const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
   const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
 
@@ -45,42 +48,115 @@ function decodePayload(decoded6bitValues) {
   return `ID: ${idStr}\nPayload: ${payload.toString()}`;
 }
 
+const railcomMessageTypes = {
+  1: { length: 2 }, // ADR_HIGH
+  2: { length: 2 }, // ADR_LOW
+};
+
+
+function formatHex(hexString) {
+    return hexString.replace(/(.{2})/g, '$1_').slice(0, -1);
+}
+
+function formatBinary(binaryString) {
+    return binaryString.replace(/(.{4})/g, '$1_').slice(0, -1);
+}
+
+function decodeRawId(messageChunks) {
+  if (messageChunks.length === 0) return "";
+  let combinedValue = 0n;
+  for (const val of messageChunks) {
+    combinedValue = (combinedValue << 6n) | BigInt(val);
+  }
+  const numBits = messageChunks.length * 6;
+  if (numBits < 4) return "Error: Not enough bits for an ID.";
+  const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
+  const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
+  const idStr = RailcomID[id] || `Unknown ID (${id})`;
+  const payloadBits = numBits - 4;
+  const payloadBytes = Math.ceil(payloadBits / 8);
+  const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
+  return `ID: ${idStr}\nPayload: 0x${formatHex(payloadHex)}`;
+}
+
+function decodePayload(messageChunks) {
+    if (messageChunks.length === 0) return "";
+    let combinedValue = 0n;
+    for (const val of messageChunks) {
+        combinedValue = (combinedValue << 6n) | BigInt(val);
+    }
+    const numBits = messageChunks.length * 6;
+    if (numBits < 4) return "Error: Not enough bits for an ID.";
+    const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
+    const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
+    const idStr = RailcomID[id] || `Unknown ID (${id})`;
+
+    let interpretation = `ID: ${idStr}\n`;
+    switch (id) {
+        case 1: // ADR_HIGH
+        case 2: // ADR_LOW
+            interpretation += `Address part: ${payload.toString()}`;
+            break;
+        default:
+            interpretation += `Payload: ${payload.toString()}`;
+            break;
+    }
+    return interpretation;
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('input');
   const decodeBtn = document.getElementById('decode');
   const output6bit = document.getElementById('output-6bit');
+  const outputRawId = document.getElementById('output-raw-id');
   const outputPayload = document.getElementById('output-payload');
 
   decodeBtn.addEventListener('click', () => {
     const lines = input.value.split('\n').filter(line => line.trim() !== '');
-    const decoded6bitValues = [];
+    const allDecoded6bitValues = [];
     output6bit.textContent = '';
     outputPayload.textContent = '';
+    outputRawId.textContent = '';
 
     for (const line of lines) {
-      let byte;
-      if (line.startsWith('0x')) {
-        byte = parseInt(line.slice(2), 16);
-      } else if (line.startsWith('0b')) {
-        byte = parseInt(line.slice(2), 2);
-      } else {
-        byte = parseInt(line, 16);
-      }
+      const hexString = line.replace(/0x/g, '').replace(/0b/g, '').replace(/\s/g, '');
+      for (let i = 0; i < hexString.length; i += 2) {
+        const byteHex = hexString.substring(i, i + 2);
+        if (byteHex.length === 0) continue;
+        const byte = parseInt(byteHex, 16);
 
-      if (!isNaN(byte)) {
-        const decoded = decode6of8(byte);
-        const byteHex = byte.toString(16).toUpperCase().padStart(2, '0');
-        const byteBin = byte.toString(2).padStart(8, '0');
-        if (decoded !== undefined) {
-          decoded6bitValues.push(decoded);
-          output6bit.textContent += `0x${byteHex} (0b${byteBin}) -> ${decoded.toString(10).padStart(2, '0')} (0b${decoded.toString(2).padStart(6, '0')})\n`;
-        } else {
-          output6bit.textContent += `0x${byteHex} (0b${byteBin}) -> Error: Invalid byte\n`;
+        if (!isNaN(byte)) {
+          const decoded = decode6of8(byte);
+          const byteBin = byte.toString(2).padStart(8, '0');
+          if (decoded !== undefined) {
+            allDecoded6bitValues.push(decoded);
+            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> ${decoded.toString(10).padStart(2, '0')} (0b${formatBinary(decoded.toString(2).padStart(6, '0'))})\n`;
+          } else {
+            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> Error: Invalid byte\n`;
+          }
         }
       }
     }
 
-    outputPayload.textContent = decodePayload(decoded6bitValues);
+    const messages = [];
+    let buffer = [...allDecoded6bitValues];
+    while (buffer.length >= 2) {
+        const firstChunk = buffer[0];
+        const id = firstChunk >> 2;
+        const messageLength = railcomMessageTypes[id]?.length || 4;
 
+        if (buffer.length < messageLength) break;
+
+        const messageChunks = buffer.splice(0, messageLength);
+        messages.push(messageChunks);
+    }
+
+    outputRawId.textContent = messages.map(decodeRawId).join('\n\n---\n\n');
+    outputPayload.textContent = messages.map(decodePayload).join('\n\n---\n\n');
+    if (buffer.length > 0) {
+        const leftover = buffer.map(b => `0b${b.toString(2).padStart(6,'0')}`).join(' ');
+        outputPayload.textContent += `\n\nWarning: ${buffer.length} leftover 6-bit chunk(s): ${leftover}`;
+    }
   });
 });
