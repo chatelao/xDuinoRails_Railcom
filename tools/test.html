@@ -26,29 +26,40 @@
         assert.equal(decode6of8(0xFF), undefined, "Invalid byte 0xFF");
         assert.equal(decode6of8(0x5B), undefined, "Invalid byte 0x5B");
       });
+      QUnit.test('formatHex', function(assert) {
+        assert.equal(formatHex("D2"), "D2", "Single byte");
+        assert.equal(formatHex("0580"), "05_80", "Two bytes");
+        assert.equal(formatHex("12345"), "12_34_5", "Odd number of nibbles");
+      });
+      QUnit.test('formatBinary', function(assert) {
+        assert.equal(formatBinary("11010010"), "1101_0010", "Single byte");
+        assert.equal(formatBinary("0000010110000000"), "0000_0101_1000_0000", "Two bytes");
+        assert.equal(formatBinary("00010010001101000101"), "0001_0010_0011_0100_0101", "Odd number of nibbles");
+      });
+      QUnit.test('decodeRawId', function(assert) {
+        // Test Case 1: ADR_LOW, address 1234. The low byte is 210.
+        assert.equal(decodeRawId([11, 18]), "ID: ADR_LOW\nPayload: 0xD2", "ADR_LOW, address 1234");
+
+        // Test Case 2: POM, CV 5, value 128.
+        assert.equal(decodeRawId([0, 0, 22, 0]), "ID: POM\nPayload: 0x05_80", "POM, CV 5, value 128");
+
+        // Test Case 3: ADR_HIGH, address 1234. The high byte is 4.
+        assert.equal(decodeRawId([4, 4]), "ID: ADR_HIGH\nPayload: 0x04", "ADR_HIGH, address 1234");
+
+        // Test Case 4: TIME, time 0x12345.
+        assert.equal(decodeRawId([52, 53, 53, 5]), "ID: TIME\nPayload: 0x12_34_5", "TIME, time 0x12345");
+      });
       QUnit.test('decodePayload', function(assert) {
         // Test Case 1: ADR_LOW, address 1234. The low byte is 210.
-        // ID=2, payload=210, 8 payload bits. Total bits = 12.
-        // Data = (2 << 8) | 210 = 722.
-        // 6-bit chunks of 722 are 11 and 18.
-        assert.equal(decodePayload([11, 18]), "ID: ADR_LOW\nPayload: 210", "ADR_LOW, address 1234");
+        assert.equal(decodePayload([11, 18]), "ID: ADR_LOW\nAddress part: 210", "ADR_LOW, address 1234");
 
-        // Test Case 2: POM, CV 5, value 128. Payload is 1408.
-        // ID=0, payload=1408, 18 payload bits. Total bits = 22, padded to 24 (4 chunks).
-        // Data = (0 << 18) | 1408 = 1408.
-        // 6-bit chunks of 1408 (padded to 24 bits) are 0, 0, 22, 0.
+        // Test Case 2: POM, CV 5, value 128.
         assert.equal(decodePayload([0, 0, 22, 0]), "ID: POM\nPayload: 1408", "POM, CV 5, value 128");
 
         // Test Case 3: ADR_HIGH, address 1234. The high byte is 4.
-        // ID=1, payload=4, 8 payload bits. Total bits = 12.
-        // Data = (1 << 8) | 4 = 260.
-        // 6-bit chunks of 260 are 4 and 4.
-        assert.equal(decodePayload([4, 4]), "ID: ADR_HIGH\nPayload: 4", "ADR_HIGH, address 1234");
+        assert.equal(decodePayload([4, 4]), "ID: ADR_HIGH\nAddress part: 4", "ADR_HIGH, address 1234");
 
         // Test Case 4: TIME, time 0x12345.
-        // ID=5, payload=0x12345, 18 payload bits. Total bits = 22, padded to 24 (4 chunks).
-        // Data = (5 << 18) | 0x12345 = 1384517.
-        // 6-bit chunks of 1384517 are 52, 53, 53, 5.
         assert.equal(decodePayload([52, 53, 53, 5]), "ID: TIME\nPayload: 74565", "TIME, time 0x12345");
       });
     });
