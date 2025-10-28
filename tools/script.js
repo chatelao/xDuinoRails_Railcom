@@ -86,11 +86,11 @@ function decodeRawId(messageChunks) {
   if (numBits < 4) return "Error: Not enough bits for an ID.";
   const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
   const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
-  const idStr = RailcomID[id] || `Unknown ID (${id})`;
+  const idStr = RailcomID[id] || `Unknown ID`;
   const payloadBits = numBits - 4;
   const payloadBytes = Math.ceil(payloadBits / 8);
   const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
-  return `ID: ${idStr}\nPayload: 0x${formatHex(payloadHex)}`;
+  return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)}`;
 }
 
 function decodePayload(messageChunks) {
@@ -104,9 +104,9 @@ function decodePayload(messageChunks) {
 
     const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
     const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
-    const idStr = RailcomID[id] || `Unknown ID (${id})`;
+    const idStr = RailcomID[id] || `Unknown ID`;
 
-    let interpretation = `ID: ${idStr}\n`;
+    let interpretation = `ID: ${idStr} (${id})\n`;
     switch (id) {
         case 0: // POM
             const cv = (payload >> 8n) & 0xFFFn;
