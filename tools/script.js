@@ -49,8 +49,22 @@ function decodeRawId(decoded6bitValues) {
 }
 
 const railcomMessageTypes = {
+  0: { length: 4 }, // POM
   1: { length: 2 }, // ADR_HIGH
   2: { length: 2 }, // ADR_LOW
+  3: { length: 2 }, // EXT/STAT4
+  4: { length: 2 }, // INFO/STAT1
+  5: { length: 4 }, // TIME
+  6: { length: 2 }, // ERROR
+  7: { length: 4 }, // DYN
+  8: { length: 6 }, // XPOM_0/STAT2
+  9: { length: 6 }, // XPOM_1
+  10: { length: 6 }, // XPOM_2
+  11: { length: 6 }, // XPOM_3
+  12: { length: 4 }, // CV_AUTO
+  13: { length: 4 }, // DECODER_STATE
+  14: { length: 2 }, // RERAIL
+  15: { length: 6 }, // DECODER_UNIQUE
 };
 
 
@@ -85,17 +99,68 @@ function decodePayload(messageChunks) {
     for (const val of messageChunks) {
         combinedValue = (combinedValue << 6n) | BigInt(val);
     }
-    const numBits = messageChunks.length * 6;
+    const numBits = BigInt(messageChunks.length * 6);
     if (numBits < 4) return "Error: Not enough bits for an ID.";
-    const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
-    const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
+
+    const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
+    const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
     const idStr = RailcomID[id] || `Unknown ID (${id})`;
 
     let interpretation = `ID: ${idStr}\n`;
     switch (id) {
+        case 0: // POM
+            const cv = (payload >> 8n) & 0xFFFn;
+            const value = payload & 0xFFn;
+            interpretation += `CV: ${cv.toString()}\nValue: ${value.toString()}`;
+            break;
         case 1: // ADR_HIGH
         case 2: // ADR_LOW
             interpretation += `Address part: ${payload.toString()}`;
+            break;
+        case 3: // EXT/STAT4
+            const p1 = (payload >> 6n) & 0b11n;
+            const p2 = (payload >> 4n) & 0b11n;
+            const p3 = (payload >> 2n) & 0b11n;
+            const p4 = (payload >> 0n) & 0b11n;
+            interpretation += `Port 1: ${p1.toString()}\nPort 2: ${p2.toString()}\nPort 3: ${p3.toString()}\nPort 4: ${p4.toString()}`;
+            break;
+        case 4: // INFO/STAT1
+            interpretation += `Status: ${payload.toString()}`;
+            break;
+        case 5: // TIME
+            interpretation += `Time: ${payload.toString()} ms`;
+            break;
+        case 6: // ERROR
+            interpretation += `Error code: ${payload.toString()}`;
+            break;
+        case 7: // DYN
+            const speed = (payload >> 8n) & 0xFFFn;
+            const load = (payload >> 4n) & 0xFn;
+            const other = payload & 0xFn;
+            interpretation += `Speed: ${speed.toString()}\nLoad: ${load.toString()}\nOther: ${other.toString()}`;
+            break;
+        case 8: // XPOM_0/STAT2
+        case 9: // XPOM_1
+        case 10: // XPOM_2
+        case 11: // XPOM_3
+            const seq = (payload >> 24n) & 0b11n;
+            const cv_xp = (payload >> 8n) & 0xFFFFn;
+            const val_xp = payload & 0xFFn;
+            interpretation += `Sequence: ${seq.toString()}\nCV: ${cv_xp.toString()}\nValue: ${val_xp.toString()}`;
+            break;
+        case 12: // CV_AUTO
+            const cv_auto = (payload >> 8n) & 0xFFFn;
+            const val_auto = payload & 0xFFn;
+            interpretation += `CV: ${cv_auto.toString()}\nValue: ${val_auto.toString()}`;
+            break;
+        case 13: // DECODER_STATE
+            interpretation += `State: ${payload.toString()}`;
+            break;
+        case 14: // RERAIL
+            interpretation += `Rerail counter: ${payload.toString()}`;
+            break;
+        case 15: // DECODER_UNIQUE
+            interpretation += `Unique ID part: ${payload.toString()}`;
             break;
         default:
             interpretation += `Payload: ${payload.toString()}`;
