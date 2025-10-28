@@ -56,7 +56,7 @@ const railcomMessageTypes = {
   4: { length: 2 }, // INFO/STAT1
   5: { length: 4 }, // TIME
   6: { length: 2 }, // ERROR
-  7: { length: 4 }, // DYN
+  7: { length: 3 }, // DYN
   8: { length: 6 }, // XPOM_0/STAT2
   9: { length: 6 }, // XPOM_1
   10: { length: 6 }, // XPOM_2
@@ -86,11 +86,11 @@ function decodeRawId(messageChunks) {
   if (numBits < 4) return "Error: Not enough bits for an ID.";
   const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
   const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
-  const idStr = RailcomID[id] || `Unknown ID (${id})`;
+  const idStr = RailcomID[id] || `Unknown ID`;
   const payloadBits = numBits - 4;
   const payloadBytes = Math.ceil(payloadBits / 8);
   const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
-  return `ID: ${idStr}\nPayload: 0x${formatHex(payloadHex)}`;
+  return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)}`;
 }
 
 function decodePayload(messageChunks) {
@@ -104,9 +104,9 @@ function decodePayload(messageChunks) {
 
     const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
     const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
-    const idStr = RailcomID[id] || `Unknown ID (${id})`;
+    const idStr = RailcomID[id] || `Unknown ID`;
 
-    let interpretation = `ID: ${idStr}\n`;
+    let interpretation = `ID: ${idStr} (${id})\n`;
     switch (id) {
         case 0: // POM
             const cv = (payload >> 8n) & 0xFFFn;
@@ -134,10 +134,9 @@ function decodePayload(messageChunks) {
             interpretation += `Error code: ${payload.toString()}`;
             break;
         case 7: // DYN
-            const speed = (payload >> 8n) & 0xFFFn;
-            const load = (payload >> 4n) & 0xFn;
-            const other = payload & 0xFn;
-            interpretation += `Speed: ${speed.toString()}\nLoad: ${load.toString()}\nOther: ${other.toString()}`;
+            const dv = (payload >> 6n) & 0xFFn;
+            const subindex = payload & 0x3Fn;
+            interpretation += `DV: ${dv.toString()}\nSubindex: ${subindex.toString()}`;
             break;
         case 8: // XPOM_0/STAT2
         case 9: // XPOM_1
