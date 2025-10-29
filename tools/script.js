@@ -26,28 +26,6 @@ function decode6of8(byte) {
   return DECODE_TABLE.get(byte);
 }
 
-function decodeRawId(decoded6bitValues) {
-  if (decoded6bitValues.length === 0) {
-    return "No data to decode.";
-  }
-
-  let combinedValue = 0n;
-  for (const val of decoded6bitValues) {
-    combinedValue = (combinedValue << 6n) | BigInt(val);
-  }
-
-  const numBits = decoded6bitValues.length * 6;
-  if (numBits < 4) {
-    return "Error: Not enough bits for an ID.";
-  }
-  const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
-  const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
-
-  const idStr = RailcomID[id] || `Unknown ID (${id})`;
-
-  return `ID: ${idStr}\nPayload: ${payload.toString()}`;
-}
-
 const railcomMessageTypes = {
   0: { length: 4 }, // POM
   1: { length: 2 }, // ADR_HIGH
@@ -108,58 +86,94 @@ function decodePayload(messageChunks) {
 
     let interpretation = `ID: ${idStr} (${id})\n`;
     switch (id) {
-        case 0: // POM
-            const cv = (payload >> 8n) & 0xFFFn;
-            const value = payload & 0xFFn;
-            interpretation += `CV: ${cv.toString()}\nValue: ${value.toString()}`;
+        case 0: // POM (Programming on the Main)
+            {
+                const cv = Number((payload >> 8n) & 0xFFFn);
+                const value = Number(payload & 0xFFn);
+                interpretation += `CV: ${cv} (0x${cv.toString(16).toUpperCase()})\nValue: ${value}`;
+            }
             break;
-        case 1: // ADR_HIGH
-        case 2: // ADR_LOW
-            interpretation += `Address part: ${payload.toString()}`;
+        case 1: // ADR_HIGH (Address High Byte)
+        case 2: // ADR_LOW (Address Low Byte)
+            {
+                const part = Number(payload);
+                interpretation += `Address part: ${part} (0b${part.toString(2).padStart(8, '0')})`;
+            }
             break;
-        case 3: // EXT/STAT4
-            const p1 = (payload >> 6n) & 0b11n;
-            const p2 = (payload >> 4n) & 0b11n;
-            const p3 = (payload >> 2n) & 0b11n;
-            const p4 = (payload >> 0n) & 0b11n;
-            interpretation += `Port 1: ${p1.toString()}\nPort 2: ${p2.toString()}\nPort 3: ${p3.toString()}\nPort 4: ${p4.toString()}`;
+        case 3: // EXT/STAT4 (Extended info / Status of 4 ports)
+            {
+                const p1 = Number((payload >> 6n) & 0b11n);
+                const p2 = Number((payload >> 4n) & 0b11n);
+                const p3 = Number((payload >> 2n) & 0b11n);
+                const p4 = Number((payload >> 0n) & 0b11n);
+                interpretation += `Port 1: ${p1}\nPort 2: ${p2}\nPort 3: ${p3}\nPort 4: ${p4}\n(Note: 00=Off, 01=On, 10=Short, 11=Overload)`;
+            }
             break;
-        case 4: // INFO/STAT1
-            interpretation += `Status: ${payload.toString()}`;
+        case 4: // INFO/STAT1 (Information / Status of 1 port)
+            {
+                interpretation += `Status: ${payload.toString()}\n(Note: Meaning is application-specific)`;
+            }
             break;
         case 5: // TIME
-            interpretation += `Time: ${payload.toString()} ms`;
+            {
+                interpretation += `Time: ${payload.toString()} ms`;
+            }
             break;
         case 6: // ERROR
-            interpretation += `Error code: ${payload.toString()}`;
+            {
+                interpretation += `Error code: ${payload.toString()}\n(Note: 1=DCC, 2=Motor, 3=Function, etc.)`;
+            }
             break;
-        case 7: // DYN
-            const dv = (payload >> 6n) & 0xFFn;
-            const subindex = payload & 0x3Fn;
-            interpretation += `DV: ${dv.toString()}\nSubindex: ${subindex.toString()}`;
+        case 7: // DYN (Dynamic Variable)
+            {
+                const dv = Number((payload >> 6n) & 0xFFn);
+                const subindex = Number(payload & 0x3Fn);
+                let subindexMeaning = `Subindex: ${subindex}`;
+                switch (subindex) {
+                    case 0: subindexMeaning += " (Speed)"; break;
+                    case 1: subindexMeaning += " (Quality of Service)"; break;
+                    case 2: subindexMeaning += " (Temperature)"; break;
+                    case 3: subindexMeaning += " (Track Voltage)"; break;
+                    case 4: subindexMeaning += " (Distance Traveled)"; break;
+                    case 5: subindexMeaning += " (Fuel Level)"; break;
+                    case 6: subindexMeaning += " (Water Level)"; break;
+                    default: subindexMeaning += " (Manufacturer specific)"; break;
+                }
+                interpretation += `Value: ${dv}\n${subindexMeaning}`;
+            }
             break;
         case 8: // XPOM_0/STAT2
         case 9: // XPOM_1
         case 10: // XPOM_2
         case 11: // XPOM_3
-            const seq = (payload >> 24n) & 0b11n;
-            const cv_xp = (payload >> 8n) & 0xFFFFn;
-            const val_xp = payload & 0xFFn;
-            interpretation += `Sequence: ${seq.toString()}\nCV: ${cv_xp.toString()}\nValue: ${val_xp.toString()}`;
+            {
+                const seq = Number((payload >> 24n) & 0b11n);
+                const cv_xp = Number((payload >> 8n) & 0xFFFFn);
+                const val_xp = Number(payload & 0xFFn);
+                interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
+            }
             break;
-        case 12: // CV_AUTO
-            const cv_auto = (payload >> 8n) & 0xFFFn;
-            const val_auto = payload & 0xFFn;
-            interpretation += `CV: ${cv_auto.toString()}\nValue: ${val_auto.toString()}`;
+        case 12: // CV_AUTO (Automatic CV Reporting)
+            {
+                const cv_auto = Number((payload >> 8n) & 0xFFFn);
+                const val_auto = Number(payload & 0xFFn);
+                interpretation += `CV: ${cv_auto}\nValue: ${val_auto}`;
+            }
             break;
         case 13: // DECODER_STATE
-            interpretation += `State: ${payload.toString()}`;
+            {
+                interpretation += `State: ${payload.toString()}\n(Note: Meaning is application-specific, e.g., motor status, function state)`;
+            }
             break;
         case 14: // RERAIL
-            interpretation += `Rerail counter: ${payload.toString()}`;
+            {
+                interpretation += `Rerail counter: ${payload.toString()}`;
+            }
             break;
         case 15: // DECODER_UNIQUE
-            interpretation += `Unique ID part: ${payload.toString()}`;
+            {
+                interpretation += `Unique ID part: ${payload.toString()}`;
+            }
             break;
         default:
             interpretation += `Payload: ${payload.toString()}`;
