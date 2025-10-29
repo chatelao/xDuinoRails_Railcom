@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const outputRawId = document.getElementById('output-raw-id');
   const outputPayload = document.getElementById('output-payload');
 
-  decodeBtn.addEventListener('click', () => {
+  function decodeInput() {
     const lines = input.value.split('\n').filter(line => line.trim() !== '');
     const allDecoded6bitValues = [];
     output6bit.textContent = '';
@@ -222,5 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const leftover = buffer.map(b => `0b${b.toString(2).padStart(6,'0')}`).join(' ');
         outputPayload.textContent += `\n\nWarning: ${buffer.length} leftover 6-bit chunk(s): ${leftover}`;
     }
-  });
+  }
+
+  input.addEventListener('input', decodeInput);
 });
