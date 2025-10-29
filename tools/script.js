@@ -51,7 +51,11 @@ function formatHex(hexString) {
 }
 
 function formatBinary(binaryString) {
-    return binaryString.replace(/(.{4})/g, '$1_').slice(0, -1);
+    let result = '';
+    for (let i = 0; i < binaryString.length; i += 4) {
+        result += binaryString.substring(i, i + 4) + '_';
+    }
+    return result.slice(0, -1);
 }
 
 function decodeRawId(messageChunks) {
@@ -209,7 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const byteBin = byte.toString(2).padStart(8, '0');
           if (decoded !== undefined) {
             allDecoded6bitValues.push(decoded);
-            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> ${decoded.toString(10).padStart(2, '0')} (0b${formatBinary(decoded.toString(2).padStart(6, '0'))})\n`;
+            const decodedBin = decoded.toString(2).padStart(6, '0');
+            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> ${decoded.toString(10).padStart(2, '0')}\n`;
+            output6bit.textContent += `    (0b${formatBinary(decodedBin)})\n`;
           } else {
             output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> Error: Invalid byte\n`;
           }
