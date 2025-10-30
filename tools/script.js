@@ -59,6 +59,9 @@ function formatBinary(binaryString) {
 }
 
 function decodeRawId(messageChunks) {
+  if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
+    return 'ACK';
+  }
   if (messageChunks.length === 0) return "";
   let combinedValue = 0n;
   for (const val of messageChunks) {
@@ -76,6 +79,9 @@ function decodeRawId(messageChunks) {
 }
 
 function decodePayload(messageChunks) {
+    if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
+        return 'ACK';
+    }
     if (messageChunks.length === 0) return "";
     let combinedValue = 0n;
     for (const val of messageChunks) {
@@ -209,38 +215,76 @@ document.addEventListener('DOMContentLoaded', () => {
         const byte = parseInt(byteHex, 16);
 
         if (!isNaN(byte)) {
-          const decoded = decode6of8(byte);
           const byteBin = byte.toString(2).padStart(8, '0');
-          if (decoded !== undefined) {
-            allDecoded6bitValues.push(decoded);
-            const decodedBin = decoded.toString(2).padStart(6, '0');
-            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> ${decoded.toString(10).padStart(2, '0')}\n`;
-            output6bit.textContent += `    (0b${formatBinary(decodedBin)})\n`;
+          if (byte === 0x0F || byte === 0xF0) { // ACK bytes
+            allDecoded6bitValues.push('ACK');
+            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> ACK\n`;
           } else {
-            output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> Error: Invalid byte\n`;
+            const decoded = decode6of8(byte);
+            if (decoded !== undefined) {
+              allDecoded6bitValues.push(decoded);
+              const decodedBin = decoded.toString(2).padStart(6, '0');
+              output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> ${decoded.toString(10).padStart(2, '0')}\n`;
+              output6bit.textContent += `    (0b${formatBinary(decodedBin)})\n`;
+            } else {
+              output6bit.textContent += `0x${byteHex.toUpperCase()} (0b${formatBinary(byteBin)}) -> Error: Invalid byte\n`;
+            }
           }
         }
       }
     }
 
+    const messageGroups = [];
+    let currentGroup = [];
+    for (const value of allDecoded6bitValues) {
+      if (value === 'ACK') {
+        if (currentGroup.length > 0) {
+          messageGroups.push(currentGroup);
+          currentGroup = [];
+        }
+        messageGroups.push(['ACK']);
+      } else {
+        currentGroup.push(value);
+      }
+    }
+    if (currentGroup.length > 0) {
+      messageGroups.push(currentGroup);
+    }
+
     const messages = [];
-    let buffer = [...allDecoded6bitValues];
-    while (buffer.length >= 2) {
-        const firstChunk = buffer[0];
+    let leftoverBuffer = [];
+    for (const group of messageGroups) {
+      if (group.length === 1 && group[0] === 'ACK') {
+        messages.push(group);
+        continue;
+      }
+
+      let subBuffer = group;
+      while (subBuffer.length >= 2) {
+        const firstChunk = subBuffer[0];
+        if (typeof firstChunk !== 'number') {
+          break;
+        }
         const id = firstChunk >> 2;
-        const messageLength = railcomMessageTypes[id]?.length || 4;
+        const messageLength = railcomMessageTypes[id]?.length;
 
-        if (buffer.length < messageLength) break;
+        if (!messageLength || subBuffer.length < messageLength) {
+          break;
+        }
 
-        const messageChunks = buffer.splice(0, messageLength);
+        const messageChunks = subBuffer.splice(0, messageLength);
         messages.push(messageChunks);
+      }
+      if (subBuffer.length > 0) {
+        leftoverBuffer.push(...subBuffer);
+      }
     }
 
     outputRawId.textContent = messages.map(decodeRawId).join('\n\n---\n\n');
     outputPayload.textContent = messages.map(decodePayload).join('\n\n---\n\n');
-    if (buffer.length > 0) {
-        const leftover = buffer.map(b => `0b${b.toString(2).padStart(6,'0')}`).join(' ');
-        outputPayload.textContent += `\n\nWarning: ${buffer.length} leftover 6-bit chunk(s): ${leftover}`;
+    if (leftoverBuffer.length > 0) {
+      const leftover = leftoverBuffer.map(b => `0b${b.toString(2).padStart(6, '0')}`).join(' ');
+      outputPayload.textContent += `\n\nWarning: ${leftoverBuffer.length} leftover 6-bit chunk(s): ${leftover}`;
     }
   }
 
