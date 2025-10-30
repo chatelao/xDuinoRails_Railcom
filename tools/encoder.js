@@ -43,6 +43,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const payloadFieldsDiv = document.getElementById('payload-fields');
   const rawPayloadInput = document.getElementById('raw-payload');
   const outputEncoded = document.getElementById('output-encoded');
+  const clearButton = document.getElementById('clear-button');
+  const randomButton = document.getElementById('random-button');
+
+  clearButton.addEventListener('click', () => {
+    form.reset();
+    updatePayloadFields();
+  });
+
+  randomButton.addEventListener('click', () => {
+    const messageId = messageIdSelect.value;
+    const fields = messagePayloads[messageId];
+    if (fields) {
+      fields.forEach(field => {
+        const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
+        if (input) {
+          if (field.type === 'datepicker') {
+            const randomDate = new Date(+(new Date()) - Math.floor(Math.random() * 10000000000));
+            input.value = randomDate.toISOString().substring(0, 10);
+          } else {
+            const min = parseInt(input.min);
+            const max = parseInt(input.max);
+            input.value = Math.floor(Math.random() * (max - min + 1)) + min;
+          }
+        }
+      });
+    }
+    encode();
+  });
 
   for (const id in RailcomID) {
     const option = document.createElement('option');
