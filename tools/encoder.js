@@ -23,31 +23,41 @@ const messagePayloads = {
     2: [{ name: "Address part", bits: 8 }],
     3: [
         {
+            name: "Type",
+            bits: 0,
+            type: 'select',
+            options: [
+                { value: 'EXT', text: 'EXT' },
+                { value: 'STAT4', text: 'STAT4' }
+            ]
+        },
+        {
             name: "Source",
             bits: 2,
             type: 'select',
             options: [
                 { value: 0b00, text: 'Decoder' },
                 { value: 0b01, text: 'Detector' }
-            ]
+            ],
+            condition: { field: 'Type', value: 'EXT' }
         },
         {
             name: "Decoder Padding",
             bits: 1,
             type: 'hidden',
             value: 0,
-            condition: { field: 'Source', value: 0b00 }
+            condition: { field: 'Type', value: 'EXT' }
         },
         {
             name: "Decoder Location Address",
             bits: 11,
-            condition: { field: 'Source', value: 0b00 }
+            condition: { field: 'Type', value: 'EXT' }
         },
         {
             name: "Detector Location Type",
             bits: 4,
             type: 'select',
-            condition: { field: 'Source', value: 0b01 },
+            condition: { field: 'Type', value: 'EXT' },
             options: [
                 { value: 0, text: 'nur Ortsinformation (0)' }, { value: 1, text: 'nur Ortsinformation (1)' },
                 { value: 2, text: 'nur Ortsinformation (2)' }, { value: 3, text: 'nur Ortsinformation (3)' },
@@ -55,14 +65,25 @@ const messagePayloads = {
                 { value: 6, text: 'nur Ortsinformation (6)' }, { value: 7, text: 'nur Ortsinformation (7)' },
                 { value: 10, text: 'Dieseltankstelle (10)' }, { value: 11, text: 'Kohlebansen (11)' },
                 { value: 12, text: 'Wasserkran (12)' }, { value: 13, text: 'Besandungsanlage (13)' },
-                { value: 14, text: 'Ladestation (Akku) (14)' }, { value: 15, text: 'Allgemeine Füllstation (15)' }
+                { value: 14, text: 'Ladestation (Akku) (14)' }, { value: 15, 'text': 'Allgemeine Füllstation (15)' }
             ]
         },
         {
             name: "Detector Location Address",
             bits: 8,
-            condition: { field: 'Source', value: 0b01 }
+            condition: { field: 'Type', value: 'EXT' }
         },
+        ...[1, 2, 3, 4].map(i => ({
+            name: `Turnout Pair ${i}`,
+            bits: 2,
+            type: 'select',
+            options: [
+                { value: 0b00, text: 'Off' },
+                { value: 0b01, text: 'Red' },
+                { value: 0b10, text: 'Green' }
+            ],
+            condition: { field: 'Type', value: 'STAT4' }
+        }))
     ],
     4: [{ name: "Status", bits: 8 }],
     5: [{ name: "Time", bits: 16, type: 'datepicker' }],
@@ -85,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const payloadFieldsDiv = document.getElementById('payload-fields');
   const rawPayloadInput = document.getElementById('raw-payload');
   const outputEncoded = document.getElementById('output-encoded');
+  const outputInterpretation = document.getElementById('output-interpretation');
   const clearButton = document.getElementById('clear-button');
   const randomButton = document.getElementById('random-button');
 
@@ -128,19 +150,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const fields = messagePayloads[messageId];
 
     if (fields) {
-        const sourceField = fields.find(f => f.name === 'Source');
-        const sourceValue = sourceField ? parseInt(document.querySelector(`[name="${sourceField.name}"]`)?.value || sourceField.options[0].value) : null;
-
         fields.forEach(field => {
-            if (field.condition && sourceValue !== null && field.condition.value !== sourceValue) {
-                return;
+            if (field.condition) {
+                const conditionField = fields.find(f => f.name === field.condition.field);
+                const element = document.querySelector(`[name="${field.condition.field}"]`);
+                let conditionValue;
+                if (element) {
+                    conditionValue = element.value;
+                } else {
+                    conditionValue = conditionField.options[0].value;
+                }
+
+                if (conditionValue != field.condition.value) {
+                    return;
+                }
             }
             if (field.type === 'hidden') {
                 return;
             }
 
             const label = document.createElement('label');
-            label.textContent = `${field.name} (bits: ${field.bits}):`;
+            label.textContent = `${field.name}${field.bits > 0 ? ` (bits: ${field.bits})` : ''}:`;
             let input;
 
             switch (field.type) {
@@ -162,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         option.textContent = opt.text;
                         input.appendChild(option);
                     });
-                    if (field.name === 'Source') {
+                    if (field.name === 'Source' || field.name === 'Type') {
                         input.addEventListener('change', updatePayloadFields);
                     }
                     break;
@@ -184,55 +214,69 @@ document.addEventListener('DOMContentLoaded', () => {
   function encode() {
     const messageId = parseInt(messageIdSelect.value);
     let payload = 0n;
+    const fields = messagePayloads[messageId];
 
     if (rawPayloadInput.value) {
         payload = BigInt('0x' + rawPayloadInput.value);
-    } else {
-        const fields = messagePayloads[messageId];
-        if (fields) {
-            const sourceField = fields.find(f => f.name === 'Source');
-            const sourceValue = sourceField ? parseInt(document.querySelector(`[name="${sourceField.name}"]`)?.value || sourceField.options[0].value) : null;
-            let currentOffset = 0;
+    } else if (fields) {
+        const getConditionValue = (fieldName) => {
+            const field = fields.find(f => f.name === fieldName);
+            if (!field) return null;
+            const element = document.querySelector(`[name="${fieldName}"]`);
+            if (element) return element.value;
+            return field.options[0].value;
+        };
 
-            const activeFields = fields.filter(f => !f.condition || (sourceValue !== null && f.condition.value === sourceValue));
+        const activeFields = fields.filter(field => {
+            if (!field.condition) return true;
+            const conditionValue = getConditionValue(field.condition.field);
+            return conditionValue === field.condition.value;
+        });
 
-            for (let i = activeFields.length - 1; i >= 0; i--) {
-                const field = activeFields[i];
-                if (!field) continue;
+        let currentOffset = 0;
+        for (let i = activeFields.length - 1; i >= 0; i--) {
+            const field = activeFields[i];
+            if (!field || field.bits === 0) continue;
 
-                let value;
-                if (field.type === 'hidden') {
-                    value = BigInt(field.value);
-                } else {
-                    const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
-                    if (input) {
-                        switch (field.type) {
-                            case 'datepicker':
-                                if (input.value) {
-                                    const date = new Date(input.value);
-                                    value = BigInt(date.getHours() * 60 + date.getMinutes());
-                                } else {
-                                    value = 0n;
-                                }
-                                break;
-                            default:
-                                value = BigInt(input.value || 0);
-                        }
+            let value;
+            if (field.type === 'hidden') {
+                value = BigInt(field.value);
+            } else {
+                const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
+                if (input) {
+                    switch (field.type) {
+                        case 'datepicker':
+                            value = input.value ? BigInt(new Date(input.value).getHours() * 60 + new Date(input.value).getMinutes()) : 0n;
+                            break;
+                        default:
+                            value = BigInt(input.value || 0);
                     }
                 }
-                if (value !== undefined) {
-                    payload |= value << BigInt(currentOffset);
-                }
-                currentOffset += field.bits;
             }
+            if (value !== undefined) {
+                payload |= value << BigInt(currentOffset);
+            }
+            currentOffset += field.bits;
         }
     }
 
-    const activeFields = messagePayloads[messageId] ? messagePayloads[messageId].filter(f => {
-        const sourceField = messagePayloads[messageId].find(f2 => f2.name === 'Source');
-        const sourceValue = sourceField ? parseInt(document.querySelector(`[name="${sourceField.name}"]`)?.value || sourceField.options[0].value) : null;
-        return !f.condition || (sourceValue !== null && f.condition.value === sourceValue);
-    }) : [];
+    const getActiveFields = () => {
+        if (!messagePayloads[messageId]) return [];
+        const getConditionValue = (fieldName) => {
+            const field = messagePayloads[messageId].find(f => f.name === fieldName);
+            if (!field) return null;
+            const element = document.querySelector(`[name="${fieldName}"]`);
+            if (element) return element.value;
+            return field.options[0].value;
+        };
+        return messagePayloads[messageId].filter(field => {
+            if (!field.condition) return true;
+            const conditionValue = getConditionValue(field.condition.field);
+            return conditionValue === field.condition.value;
+        });
+    };
+
+    const activeFields = getActiveFields();
     const totalPayloadBits = activeFields.reduce((acc, field) => acc + field.bits, 0);
     const totalBits = 4 + totalPayloadBits;
 
@@ -248,6 +292,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const encodedBytes = sixBitChunks.map(chunk => ENCODE_TABLE[chunk]);
 
     outputEncoded.textContent = '0x' + encodedBytes.map(byte => byte.toString(16).toUpperCase().padStart(2, '0')).join('');
+    interpretPayload(messageId, payload);
+  }
+
+  function interpretPayload(messageId, payload) {
+    let interpretation = '';
+    const idStr = RailcomID[messageId] || `Unknown ID`;
+
+    switch (messageId) {
+        case 3: // EXT/STAT4
+            const typeValue = document.querySelector('[name="Type"]').value;
+            if (typeValue === 'STAT4') {
+                interpretation += `ID: EXT/STAT4 (3)\n`;
+                interpretation += `Turnout Status:\n`;
+                for (let i = 3; i >= 0; i--) {
+                    const turnoutNum = i + 1;
+                    const statusValue = (Number(payload) >> (i * 2)) & 0b11;
+                    let status = 'Unknown';
+                    if (statusValue === 0b00) {
+                        status = 'Off';
+                    } else if (statusValue === 0b01) {
+                        status = 'Red (turn/left/stop)';
+                    } else if (statusValue === 0b10) {
+                        status = 'Green (straight/right/go)';
+                    }
+                    interpretation += `  Pair ${turnoutNum}: ${status}\n`;
+                }
+            } else {
+                interpretation = 'Interpretation for EXT is not yet implemented.';
+            }
+            break;
+        default:
+            interpretation = 'Interpretation for this message type is not yet implemented.';
+    }
+    outputInterpretation.textContent = interpretation;
   }
 
 
