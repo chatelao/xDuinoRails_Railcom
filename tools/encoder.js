@@ -113,5 +113,33 @@ document.addEventListener('DOMContentLoaded', () => {
   messageIdSelect.addEventListener('change', updatePayloadFields);
   form.addEventListener('input', encode);
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const messageIdFromUrl = urlParams.get('id');
+  const payloadFromUrl = urlParams.get('payload');
+
+  if (messageIdFromUrl) {
+      messageIdSelect.value = messageIdFromUrl;
+  }
+
   updatePayloadFields();
+
+  if (payloadFromUrl) {
+      rawPayloadInput.value = payloadFromUrl;
+      const payload = BigInt('0x' + payloadFromUrl);
+      const fields = messagePayloads[messageIdSelect.value];
+      if (fields) {
+          let currentOffset = 0;
+          for (let i = fields.length - 1; i >= 0; i--) {
+              const field = fields[i];
+              const mask = (1n << BigInt(field.bits)) - 1n;
+              const value = (payload >> BigInt(currentOffset)) & mask;
+              const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
+              if (input) {
+                  input.value = value;
+              }
+              currentOffset += field.bits;
+          }
+      }
+      encode();
+  }
 });
