@@ -132,14 +132,17 @@ nav a.active {
 }
 
 /* Form Element Styling */
-.form-grid input[type="text"],
-.form-grid input[type="number"],
-.form-grid select {
+input[type="text"],
+input[type="number"],
+select {
   width: 100%;
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box; /* Ensures padding doesn't affect width */
+  background-color: #fff;
+  color: #333;
+  font-size: 0.9em;
 }
 
 .form-grid input[type="text"]:focus,
