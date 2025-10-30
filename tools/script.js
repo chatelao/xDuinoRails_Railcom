@@ -141,18 +141,64 @@ function decodePayload(messageChunks) {
             {
                 const dv = Number((payload >> 6n) & 0xFFn);
                 const subindex = Number(payload & 0x3Fn);
-                let subindexMeaning = `Subindex: ${subindex}`;
+                interpretation += `Value: ${dv} (0x${dv.toString(16).toUpperCase()})\nSubindex: ${subindex}`;
                 switch (subindex) {
-                    case 0: subindexMeaning += " (Speed)"; break;
-                    case 1: subindexMeaning += " (Quality of Service)"; break;
-                    case 2: subindexMeaning += " (Temperature)"; break;
-                    case 3: subindexMeaning += " (Track Voltage)"; break;
-                    case 4: subindexMeaning += " (Distance Traveled)"; break;
-                    case 5: subindexMeaning += " (Fuel Level)"; break;
-                    case 6: subindexMeaning += " (Water Level)"; break;
-                    default: subindexMeaning += " (Manufacturer specific)"; break;
+                    case 0: interpretation += " (True speed, part 1)"; break;
+                    case 1: interpretation += " (True speed, part 2)"; break;
+                    case 2:
+                        const last = dv & 0x7F;
+                        interpretation += ` (SUSI load: ${last} / Speed: ${dv >> 7} GGGGGGG)`;
+                        break;
+                    case 3:
+                        const major = (dv >> 4) & 0x0F;
+                        const minor = dv & 0x0F;
+                        interpretation += ` (RailCom Version ${major}.${minor})`;
+                        break;
+                    case 4: interpretation += " (Change Flags from RCN-218)"; break;
+                    case 5: interpretation += " (Flag Register)"; break;
+                    case 6: interpretation += " (Input Register)"; break;
+                    case 7: interpretation += ` (Reception statistics: ${dv} % bad packets)`; break;
+                    case 8: interpretation += ` (Container 1 level: ${dv} %)`; break;
+                    case 9: interpretation += ` (Container 2 level: ${dv} %)`; break;
+                    case 10: interpretation += ` (Container 3 level: ${dv} %)`; break;
+                    case 11: interpretation += ` (Container 4 level: ${dv} %)`; break;
+                    case 12: interpretation += ` (Container 5 level: ${dv} %)`; break;
+                    case 13: interpretation += ` (Container 6 level: ${dv} %)`; break;
+                    case 14: interpretation += ` (Container 7 level: ${dv} %)`; break;
+                    case 15: interpretation += ` (Container 8 level: ${dv} %)`; break;
+                    case 16: interpretation += ` (Container 9 level: ${dv} %)`; break;
+                    case 17: interpretation += ` (Container 10 level: ${dv} %)`; break;
+                    case 18: interpretation += ` (Container 11 level: ${dv} %)`; break;
+                    case 19: interpretation += ` (Container 12 level: ${dv} %)`; break;
+                    case 20: interpretation += " (Location address)"; break;
+                    case 21: interpretation += " (Warning and alarm messages)"; break;
+                    case 22: interpretation += " (Odometer)"; break;
+                    case 23: interpretation += " (Maintenance interval)"; break;
+                    case 24: case 25: interpretation += " (Reserved)"; break;
+                    case 26:
+                        const temp = -50 + dv;
+                        interpretation += ` (Temperature: ${temp}°C)`;
+                        break;
+                    case 27: interpretation += " (Direction status byte for East-West control)"; break;
+                    case 46:
+                        const voltage = 5 + dv * 0.1;
+                        interpretation += ` (Track voltage: ${voltage.toFixed(1)} V)`;
+                        break;
+                    case 47:
+                        const distance = dv * 4;
+                        interpretation += ` (Calculated stopping distance: ${distance} m)`;
+                        break;
+                    case 28: case 29: case 30: case 31: case 32: case 33: case 34: case 35:
+                    case 36: case 37: case 38: case 39: case 40: case 41: case 42: case 43:
+                    case 44: case 45: case 48: case 49: case 50: case 51: case 52: case 53:
+                    case 54: case 55: case 56: case 57: case 58: case 59: case 60: case 61:
+                    case 62: case 63:
+                        interpretation += " (Reserved)";
+                        break;
+                    default:
+                        interpretation += " (Unknown)";
+                        break;
                 }
-                interpretation += `Value: ${dv}\n${subindexMeaning}`;
             }
             break;
         case 8: // XPOM_0/STAT2
