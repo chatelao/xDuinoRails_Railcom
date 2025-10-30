@@ -249,27 +249,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const output6bit = document.getElementById('output-6bit');
   const outputRawId = document.getElementById('output-raw-id');
   const outputPayload = document.getElementById('output-payload');
-  const copyBtns = document.querySelectorAll('.copy-btn');
+  const exampleSelect = document.getElementById('example-select');
 
-  copyBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.dataset.target;
-      const target = document.getElementById(targetId);
-      let textToCopy = target.textContent;
-      if (targetId === 'input-sample') {
-        textToCopy = document.getElementById('input-sample').textContent;
-        document.getElementById('input').value = textToCopy;
-        decodeInput();
-      }
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        btn.textContent = 'Copied!';
-        setTimeout(() => {
-          btn.textContent = 'Copy';
-        }, 2000);
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
-      });
-    });
+  const examples = {
+    "Short Address": "93 66",
+    "Long Address": "8E B1 93 53",
+    "POM Command": "AC A3 A6 9C",
+    "Message with ACK": "93 66 0F 93 53",
+    "Long Address (Manual)": "8E B1 93 53 0F 8E B1 93 53",
+    "Accessory Address": "8E A3 96 63 0F 8D B2 95 56",
+  };
+
+  for (const name in examples) {
+    const option = document.createElement('option');
+    option.value = examples[name];
+    option.textContent = name;
+    exampleSelect.appendChild(option);
+  }
+
+  exampleSelect.addEventListener('change', () => {
+    input.value = exampleSelect.value;
+    decodeInput();
   });
 
   function decodeInput() {
