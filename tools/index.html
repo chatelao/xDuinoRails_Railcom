@@ -20,43 +20,25 @@
   <div class="container">
     <div class="box input-box">
       <h2>Input</h2>
-      <div class="sample-container">
-        <button class="copy-btn" data-target="input-sample">Copy</button>
-        <pre id="input-sample">93 66</pre>
-      </div>
+      <label for="example-select">Examples:</label>
+      <select id="example-select">
+        <option value="" disabled selected>Select an example</option>
+      </select>
       <textarea id="input" rows="3" placeholder="Enter hexadecimal values, one message per line... e.g. 0x9366"></textarea>
     </div>
 
     <div class="box">
         <h2>Step 1: 4-of-8 Decoding</h2>
-        <div class="sample-container">
-            <button class="copy-btn" data-target="output-6bit-sample">Copy</button>
-            <pre id="output-6bit-sample">0x93 (0b1001_0011) -> 10
-    (0b001010)
-0x66 (0b0110_0110) -> 35
-    (0b100011)</pre>
-        </div>
         <pre id="output-6bit"></pre>
     </div>
 
     <div class="box">
         <h2>Step 2: Message Framing</h2>
-        <div class="sample-container">
-            <button class="copy-btn" data-target="output-raw-id-sample">Copy</button>
-            <pre id="output-raw-id-sample">ID: ADR_LOW (2)
-Payload: 0x8B</pre>
-        </div>
         <pre id="output-raw-id"></pre>
     </div>
 
     <div class="box">
         <h2>Step 3: Payload Interpretation</h2>
-        <div class="sample-container">
-            <button class="copy-btn" data-target="output-payload-sample">Copy</button>
-            <pre id="output-payload-sample">ID: ADR_LOW (2)
-Address part: 139 (0b10001011)
-<a href="encoder.html?id=2&amp;payload=8B" target="_blank">Edit</a></pre>
-        </div>
         <pre id="output-payload"></pre>
     </div>
   </div>
