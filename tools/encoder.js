@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
         input.max = (1 << field.bits) - 1;
         payloadFieldsDiv.appendChild(label);
         payloadFieldsDiv.appendChild(input);
-        payloadFieldsDiv.appendChild(document.createElement('br'));
       });
     }
     encode();
