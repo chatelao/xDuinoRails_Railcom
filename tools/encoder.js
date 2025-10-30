@@ -11,7 +11,7 @@ const ENCODE_TABLE = [
 ];
 
 const RailcomID = {
-  0: "POM", 1: "ADR_HIGH", 2: "ADR_LOW", 3: "EXT/STAT4",
+  0: "POM", 1: "ADR_HIGH", 2: "ADR_LOW", 3: "EXT",
   4: "INFO/STAT1", 5: "TIME", 6: "ERROR", 7: "DYN",
   8: "XPOM_0/STAT2", 9: "XPOM_1", 10: "XPOM_2", 11: "XPOM_3",
   12: "CV_AUTO", 13: "DECODER_STATE", 14: "RERAIL", 15: "DECODER_UNIQUE"
@@ -21,7 +21,49 @@ const messagePayloads = {
     0: [{ name: "CV", bits: 12 }, { name: "Value", bits: 8 }],
     1: [{ name: "Address part", bits: 8 }],
     2: [{ name: "Address part", bits: 8 }],
-    3: [{ name: "Port 1", bits: 2 }, { name: "Port 2", bits: 2 }, { name: "Port 3", bits: 2 }, { name: "Port 4", bits: 2 }],
+    3: [
+        {
+            name: "Source",
+            bits: 2,
+            type: 'select',
+            options: [
+                { value: 0b00, text: 'Decoder' },
+                { value: 0b01, text: 'Detector' }
+            ]
+        },
+        {
+            name: "Decoder Padding",
+            bits: 1,
+            type: 'hidden',
+            value: 0,
+            condition: { field: 'Source', value: 0b00 }
+        },
+        {
+            name: "Decoder Location Address",
+            bits: 11,
+            condition: { field: 'Source', value: 0b00 }
+        },
+        {
+            name: "Detector Location Type",
+            bits: 4,
+            type: 'select',
+            condition: { field: 'Source', value: 0b01 },
+            options: [
+                { value: 0, text: 'nur Ortsinformation (0)' }, { value: 1, text: 'nur Ortsinformation (1)' },
+                { value: 2, text: 'nur Ortsinformation (2)' }, { value: 3, text: 'nur Ortsinformation (3)' },
+                { value: 4, text: 'nur Ortsinformation (4)' }, { value: 5, text: 'nur Ortsinformation (5)' },
+                { value: 6, text: 'nur Ortsinformation (6)' }, { value: 7, text: 'nur Ortsinformation (7)' },
+                { value: 10, text: 'Dieseltankstelle (10)' }, { value: 11, text: 'Kohlebansen (11)' },
+                { value: 12, text: 'Wasserkran (12)' }, { value: 13, text: 'Besandungsanlage (13)' },
+                { value: 14, text: 'Ladestation (Akku) (14)' }, { value: 15, text: 'Allgemeine Füllstation (15)' }
+            ]
+        },
+        {
+            name: "Detector Location Address",
+            bits: 8,
+            condition: { field: 'Source', value: 0b01 }
+        },
+    ],
     4: [{ name: "Status", bits: 8 }],
     5: [{ name: "Time", bits: 16, type: 'datepicker' }],
     6: [{ name: "Error code", bits: 8 }],
@@ -85,36 +127,58 @@ document.addEventListener('DOMContentLoaded', () => {
     const fields = messagePayloads[messageId];
 
     if (fields) {
-      fields.forEach(field => {
-        const label = document.createElement('label');
-        label.textContent = `${field.name} (bits: ${field.bits}):`;
-        let input;
+        const sourceField = fields.find(f => f.name === 'Source');
+        const sourceValue = sourceField ? parseInt(document.querySelector(`[name="${sourceField.name}"]`)?.value || sourceField.options[0].value) : null;
 
-        switch (field.type) {
-            case 'slider':
-                input = document.createElement('input');
-                input.type = 'range';
-                input.min = 0;
-                input.max = (1 << field.bits) - 1;
-                break;
-            case 'datepicker':
-                input = document.createElement('input');
-                input.type = 'date';
-                break;
-            default:
-                input = document.createElement('input');
-                input.type = 'number';
-                input.min = 0;
-                input.max = (1 << field.bits) - 1;
-        }
+        fields.forEach(field => {
+            if (field.condition && sourceValue !== null && field.condition.value !== sourceValue) {
+                return;
+            }
+            if (field.type === 'hidden') {
+                return;
+            }
 
-        input.name = field.name;
-        payloadFieldsDiv.appendChild(label);
-        payloadFieldsDiv.appendChild(input);
-      });
+            const label = document.createElement('label');
+            label.textContent = `${field.name} (bits: ${field.bits}):`;
+            let input;
+
+            switch (field.type) {
+                case 'slider':
+                    input = document.createElement('input');
+                    input.type = 'range';
+                    input.min = 0;
+                    input.max = (1 << field.bits) - 1;
+                    break;
+                case 'datepicker':
+                    input = document.createElement('input');
+                    input.type = 'date';
+                    break;
+                case 'select':
+                    input = document.createElement('select');
+                    field.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt.value;
+                        option.textContent = opt.text;
+                        input.appendChild(option);
+                    });
+                    if (field.name === 'Source') {
+                        input.addEventListener('change', updatePayloadFields);
+                    }
+                    break;
+                default:
+                    input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = 0;
+                    input.max = (1 << field.bits) - 1;
+            }
+
+            input.name = field.name;
+            payloadFieldsDiv.appendChild(label);
+            payloadFieldsDiv.appendChild(input);
+        });
     }
     encode();
-  }
+}
 
   function encode() {
     const messageId = parseInt(messageIdSelect.value);
@@ -125,24 +189,37 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         const fields = messagePayloads[messageId];
         if (fields) {
+            const sourceField = fields.find(f => f.name === 'Source');
+            const sourceValue = sourceField ? parseInt(document.querySelector(`[name="${sourceField.name}"]`)?.value || sourceField.options[0].value) : null;
             let currentOffset = 0;
-            for (let i = fields.length - 1; i >= 0; i--) {
-                const field = fields[i];
-                const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
-                if (input) {
-                    let value;
-                    switch (field.type) {
-                        case 'datepicker':
-                            if (input.value) {
-                                const date = new Date(input.value);
-                                value = BigInt(date.getHours() * 60 + date.getMinutes());
-                            } else {
-                                value = 0n;
-                            }
-                            break;
-                        default:
-                            value = BigInt(input.value || 0);
+
+            const activeFields = fields.filter(f => !f.condition || (sourceValue !== null && f.condition.value === sourceValue));
+
+            for (let i = activeFields.length - 1; i >= 0; i--) {
+                const field = activeFields[i];
+                if (!field) continue;
+
+                let value;
+                if (field.type === 'hidden') {
+                    value = BigInt(field.value);
+                } else {
+                    const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
+                    if (input) {
+                        switch (field.type) {
+                            case 'datepicker':
+                                if (input.value) {
+                                    const date = new Date(input.value);
+                                    value = BigInt(date.getHours() * 60 + date.getMinutes());
+                                } else {
+                                    value = 0n;
+                                }
+                                break;
+                            default:
+                                value = BigInt(input.value || 0);
+                        }
                     }
+                }
+                if (value !== undefined) {
                     payload |= value << BigInt(currentOffset);
                 }
                 currentOffset += field.bits;
@@ -150,8 +227,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const totalBits = 4 + (messagePayloads[messageId] ? messagePayloads[messageId].reduce((acc, field) => acc + field.bits, 0) : 0);
-    const combinedValue = (BigInt(messageId) << BigInt(totalBits - 4)) | payload;
+    const activeFields = messagePayloads[messageId] ? messagePayloads[messageId].filter(f => {
+        const sourceField = messagePayloads[messageId].find(f2 => f2.name === 'Source');
+        const sourceValue = sourceField ? parseInt(document.querySelector(`[name="${sourceField.name}"]`)?.value || sourceField.options[0].value) : null;
+        return !f.condition || (sourceValue !== null && f.condition.value === sourceValue);
+    }) : [];
+    const totalPayloadBits = activeFields.reduce((acc, field) => acc + field.bits, 0);
+    const totalBits = 4 + totalPayloadBits;
+
+    const combinedValue = (BigInt(messageId) << BigInt(totalPayloadBits)) | payload;
 
     let bitString = combinedValue.toString(2).padStart(totalBits, '0');
 
