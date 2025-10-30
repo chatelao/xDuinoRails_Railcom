@@ -115,11 +115,21 @@ function decodePayload(messageChunks) {
             break;
         case 3: // EXT/STAT4 (Extended info / Status of 4 ports)
             {
-                const p1 = Number((payload >> 6n) & 0b11n);
-                const p2 = Number((payload >> 4n) & 0b11n);
-                const p3 = Number((payload >> 2n) & 0b11n);
-                const p4 = Number((payload >> 0n) & 0b11n);
-                interpretation += `Port 1: ${p1}\nPort 2: ${p2}\nPort 3: ${p3}\nPort 4: ${p4}\n(Note: 00=Off, 01=On, 10=Short, 11=Overload)`;
+                interpretation += `Turnout Status:\n`;
+                for (let i = 3; i >= 0; i--) {
+                    const turnoutNum = i + 1;
+                    const greenBit = (Number(payload) >> (i * 2 + 1)) & 1;
+                    const redBit = (Number(payload) >> (i * 2)) & 1;
+                    let status = 'Unknown';
+                    if (greenBit === 1) {
+                        status = 'Green (straight/right/go)';
+                    } else if (redBit === 1) {
+                        status = 'Red (turn/left/stop)';
+                    } else {
+                        status = 'Off';
+                    }
+                    interpretation += `  Pair ${turnoutNum}: ${status}\n`;
+                }
             }
             break;
         case 4: // INFO/STAT1 (Information / Status of 1 port)
@@ -255,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
     "Short Address": "93 66",
     "Long Address": "8E B1 93 53",
     "POM Command": "AC A3 A6 9C",
+    "STAT4 Turnout Status": "8B B4",
     "Message with ACK": "93 66 0F 93 53",
     "Long Address (Manual)": "8E B1 93 53 0F 8E B1 93 53",
     "Accessory Address": "8E A3 96 63 0F 8D B2 95 56",
