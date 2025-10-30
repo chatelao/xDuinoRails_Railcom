@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }
+    rawPayloadInput.value = '';
     encode();
   });
 
