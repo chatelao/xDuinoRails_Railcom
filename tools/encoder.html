@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railcom&reg; Bit Encoder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Railcom® Bit Encoder</h1>
+    <nav>
+      <a href="index.html">Decoder</a>
+      <a href="encoder.html" class="active">Encoder</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="box input-box">
+      <h2>Input</h2>
+      <form id="encoder-form">
+        <label for="message-id">Message ID:</label>
+        <select id="message-id" name="message-id"></select><br><br>
+
+        <div id="payload-fields"></div>
+
+        <label for="raw-payload">Raw Payload (hex):</label>
+        <input type="text" id="raw-payload" name="raw-payload"><br><br>
+      </form>
+    </div>
+
+    <div class="box">
+        <h2>Encoded Output</h2>
+        <pre id="output-encoded"></pre>
+    </div>
+  </div>
+
+  <footer>
+    <p>xDuinoRails_Railcom Railcom Encoder</p>
+  </footer>
+
+  <script src="encoder.js"></script>
+</body>
+</html>
