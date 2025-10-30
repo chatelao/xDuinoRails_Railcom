@@ -117,3 +117,35 @@ nav a.active {
   background-color: #fff;
   color: #3498db;
 }
+
+/* Form Grid Layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 15px;
+  align-items: center;
+}
+
+.form-grid label {
+  text-align: right;
+  font-weight: bold;
+}
+
+/* Form Element Styling */
+.form-grid input[type="text"],
+.form-grid input[type="number"],
+.form-grid select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box; /* Ensures padding doesn't affect width */
+}
+
+.form-grid input[type="text"]:focus,
+.form-grid input[type="number"]:focus,
+.form-grid select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 4px rgba(52, 152, 219, 0.5);
+}
