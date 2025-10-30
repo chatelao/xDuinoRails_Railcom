@@ -329,6 +329,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
+  payloadFieldsDiv.addEventListener('input', () => {
+    rawPayloadInput.value = '';
+  });
   messageIdSelect.addEventListener('change', updatePayloadFields);
   form.addEventListener('input', encode);
 
