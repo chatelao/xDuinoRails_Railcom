@@ -92,6 +92,9 @@ function decodePayload(messageChunks) {
 
     const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
     const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
+    const payloadBits = Number(numBits - 4n);
+    const payloadBytes = Math.ceil(payloadBits / 8);
+    const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
     const idStr = RailcomID[id] || `Unknown ID`;
 
     let interpretation = `ID: ${idStr} (${id})\n`;
@@ -189,6 +192,8 @@ function decodePayload(messageChunks) {
             interpretation += `Payload: ${payload.toString()}`;
             break;
     }
+    const editUrl = `encoder.html?id=${id}&payload=${payloadHex}`;
+    interpretation += `\n<a href="${editUrl}" target="_blank">Edit</a>`;
     return interpretation;
 }
 
@@ -280,11 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    outputRawId.textContent = messages.map(decodeRawId).join('\n\n---\n\n');
-    outputPayload.textContent = messages.map(decodePayload).join('\n\n---\n\n');
+    outputRawId.innerHTML = messages.map(decodeRawId).join('<hr>');
+    outputPayload.innerHTML = messages.map(decodePayload).join('<hr>');
     if (leftoverBuffer.length > 0) {
       const leftover = leftoverBuffer.map(b => `0b${b.toString(2).padStart(6, '0')}`).join(' ');
-      outputPayload.textContent += `\n\nWarning: ${leftoverBuffer.length} leftover 6-bit chunk(s): ${leftover}`;
+      outputPayload.innerHTML += `<br><br>Warning: ${leftoverBuffer.length} leftover 6-bit chunk(s): ${leftover}`;
     }
   }
 
