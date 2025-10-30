@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "puppeteer": "^22.0.0",
+    "puppeteer": "^22.15.0",
     "qunit": "^2.20.0"
   }
 }

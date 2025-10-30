@@ -200,10 +200,31 @@ function decodePayload(messageChunks) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('input');
-  const decodeBtn = document.getElementById('decode');
   const output6bit = document.getElementById('output-6bit');
   const outputRawId = document.getElementById('output-raw-id');
   const outputPayload = document.getElementById('output-payload');
+  const copyBtns = document.querySelectorAll('.copy-btn');
+
+  copyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const target = document.getElementById(targetId);
+      let textToCopy = target.textContent;
+      if (targetId === 'input-sample') {
+        textToCopy = document.getElementById('input-sample').textContent;
+        document.getElementById('input').value = textToCopy;
+        decodeInput();
+      }
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+      });
+    });
+  });
 
   function decodeInput() {
     const lines = input.value.split('\n').filter(line => line.trim() !== '');
