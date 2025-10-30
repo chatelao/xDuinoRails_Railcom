@@ -23,9 +23,9 @@ const messagePayloads = {
     2: [{ name: "Address part", bits: 8 }],
     3: [{ name: "Port 1", bits: 2 }, { name: "Port 2", bits: 2 }, { name: "Port 3", bits: 2 }, { name: "Port 4", bits: 2 }],
     4: [{ name: "Status", bits: 8 }],
-    5: [{ name: "Time", bits: 16 }],
+    5: [{ name: "Time", bits: 16, type: 'datepicker' }],
     6: [{ name: "Error code", bits: 8 }],
-    7: [{ name: "Value", bits: 8 }, { name: "Subindex", bits: 6 }],
+    7: [{ name: "Value", bits: 8, type: 'slider' }, { name: "Subindex", bits: 6 }],
     8: [{ name: "Sequence", bits: 2 }, { name: "CV", bits: 16 }, { name: "Value", bits: 8 }],
     9: [{ name: "Sequence", bits: 2 }, { name: "CV", bits: 16 }, { name: "Value", bits: 8 }],
     10: [{ name: "Sequence", bits: 2 }, { name: "CV", bits: 16 }, { name: "Value", bits: 8 }],
@@ -60,11 +60,27 @@ document.addEventListener('DOMContentLoaded', () => {
       fields.forEach(field => {
         const label = document.createElement('label');
         label.textContent = `${field.name} (bits: ${field.bits}):`;
-        const input = document.createElement('input');
-        input.type = 'number';
+        let input;
+
+        switch (field.type) {
+            case 'slider':
+                input = document.createElement('input');
+                input.type = 'range';
+                input.min = 0;
+                input.max = (1 << field.bits) - 1;
+                break;
+            case 'datepicker':
+                input = document.createElement('input');
+                input.type = 'date';
+                break;
+            default:
+                input = document.createElement('input');
+                input.type = 'number';
+                input.min = 0;
+                input.max = (1 << field.bits) - 1;
+        }
+
         input.name = field.name;
-        input.min = 0;
-        input.max = (1 << field.bits) - 1;
         payloadFieldsDiv.appendChild(label);
         payloadFieldsDiv.appendChild(input);
       });
@@ -85,8 +101,20 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = fields.length - 1; i >= 0; i--) {
                 const field = fields[i];
                 const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
-                if (input && input.value) {
-                    const value = BigInt(input.value);
+                if (input) {
+                    let value;
+                    switch (field.type) {
+                        case 'datepicker':
+                            if (input.value) {
+                                const date = new Date(input.value);
+                                value = BigInt(date.getHours() * 60 + date.getMinutes());
+                            } else {
+                                value = 0n;
+                            }
+                            break;
+                        default:
+                            value = BigInt(input.value || 0);
+                    }
                     payload |= value << BigInt(currentOffset);
                 }
                 currentOffset += field.bits;
