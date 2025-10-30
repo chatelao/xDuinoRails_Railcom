@@ -58,37 +58,23 @@ function formatBinary(binaryString) {
     return result.slice(0, -1);
 }
 
-function decodeRawId(messageChunks) {
-  if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
-    return 'ACK';
-  }
-  if (messageChunks.length === 0) return "";
-  let combinedValue = 0n;
-  for (const val of messageChunks) {
-    combinedValue = (combinedValue << 6n) | BigInt(val);
-  }
-  const numBits = messageChunks.length * 6;
-  if (numBits < 4) return "Error: Not enough bits for an ID.";
-  const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
-  const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
-  const idStr = RailcomID[id] || `Unknown ID`;
-  const payloadBits = numBits - 4;
-  const payloadBytes = Math.ceil(payloadBits / 8);
-  const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
-  return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)}`;
-}
-
-function decodePayload(messageChunks) {
-    if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
-        return 'ACK';
+function parseMessageChunks(messageChunks) {
+    if (!messageChunks || messageChunks.length === 0) {
+        return null;
     }
-    if (messageChunks.length === 0) return "";
+    if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
+        return { isAck: true };
+    }
+
     let combinedValue = 0n;
     for (const val of messageChunks) {
         combinedValue = (combinedValue << 6n) | BigInt(val);
     }
+
     const numBits = BigInt(messageChunks.length * 6);
-    if (numBits < 4) return "Error: Not enough bits for an ID.";
+    if (numBits < 4) {
+        return { error: "Not enough bits for an ID." };
+    }
 
     const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
     const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
@@ -97,23 +83,41 @@ function decodePayload(messageChunks) {
     const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
     const idStr = RailcomID[id] || `Unknown ID`;
 
+    return { id, payload, payloadHex, idStr, isAck: false, error: null };
+}
+
+function decodeRawId(messageChunks) {
+    const parsed = parseMessageChunks(messageChunks);
+    if (!parsed) return "";
+    if (parsed.isAck) return "ACK";
+    if (parsed.error) return `Error: ${parsed.error}`;
+    return `ID: ${parsed.idStr} (${parsed.id})\nPayload: 0x${formatHex(parsed.payloadHex)}`;
+}
+
+function decodePayload(messageChunks) {
+    const parsed = parseMessageChunks(messageChunks);
+    if (!parsed) return "";
+    if (parsed.isAck) return "ACK";
+    if (parsed.error) return `Error: ${parsed.error}`;
+
+    const { id, payload, idStr } = parsed;
     let interpretation = `ID: ${idStr} (${id})\n`;
     switch (id) {
-        case 0: // POM (Programming on the Main)
+        case 0: // POM
             {
                 const cv = Number((payload >> 8n) & 0xFFFn);
                 const value = Number(payload & 0xFFn);
                 interpretation += `CV: ${cv} (0x${cv.toString(16).toUpperCase()})\nValue: ${value}`;
             }
             break;
-        case 1: // ADR_HIGH (Address High Byte)
-        case 2: // ADR_LOW (Address Low Byte)
+        case 1: // ADR_HIGH
+        case 2: // ADR_LOW
             {
                 const part = Number(payload);
                 interpretation += `Address part: ${part} (0b${part.toString(2).padStart(8, '0')})`;
             }
             break;
-        case 3: // EXT/STAT4 (Extended info / Status of 4 ports)
+        case 3: // EXT/STAT4
             {
                 const p1 = Number((payload >> 6n) & 0b11n);
                 const p2 = Number((payload >> 4n) & 0b11n);
@@ -122,22 +126,16 @@ function decodePayload(messageChunks) {
                 interpretation += `Port 1: ${p1}\nPort 2: ${p2}\nPort 3: ${p3}\nPort 4: ${p4}\n(Note: 00=Off, 01=On, 10=Short, 11=Overload)`;
             }
             break;
-        case 4: // INFO/STAT1 (Information / Status of 1 port)
-            {
-                interpretation += `Status: ${payload.toString()}\n(Note: Meaning is application-specific)`;
-            }
+        case 4: // INFO/STAT1
+            interpretation += `Status: ${payload.toString()}\n(Note: Meaning is application-specific)`;
             break;
         case 5: // TIME
-            {
-                interpretation += `Time: ${payload.toString()} ms`;
-            }
+            interpretation += `Time: ${payload.toString()} ms`;
             break;
         case 6: // ERROR
-            {
-                interpretation += `Error code: ${payload.toString()}\n(Note: 1=DCC, 2=Motor, 3=Function, etc.)`;
-            }
+            interpretation += `Error code: ${payload.toString()}\n(Note: 1=DCC, 2=Motor, 3=Function, etc.)`;
             break;
-        case 7: // DYN (Dynamic Variable)
+        case 7: // DYN
             {
                 const dv = Number((payload >> 6n) & 0xFFn);
                 const subindex = Number(payload & 0x3Fn);
@@ -166,7 +164,7 @@ function decodePayload(messageChunks) {
                 interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
             }
             break;
-        case 12: // CV_AUTO (Automatic CV Reporting)
+        case 12: // CV_AUTO
             {
                 const cv_auto = Number((payload >> 8n) & 0xFFFn);
                 const val_auto = Number(payload & 0xFFn);
@@ -174,27 +172,29 @@ function decodePayload(messageChunks) {
             }
             break;
         case 13: // DECODER_STATE
-            {
-                interpretation += `State: ${payload.toString()}\n(Note: Meaning is application-specific, e.g., motor status, function state)`;
-            }
+            interpretation += `State: ${payload.toString()}\n(Note: Meaning is application-specific, e.g., motor status, function state)`;
             break;
         case 14: // RERAIL
-            {
-                interpretation += `Rerail counter: ${payload.toString()}`;
-            }
+            interpretation += `Rerail counter: ${payload.toString()}`;
             break;
         case 15: // DECODER_UNIQUE
-            {
-                interpretation += `Unique ID part: ${payload.toString()}`;
-            }
+            interpretation += `Unique ID part: ${payload.toString()}`;
             break;
         default:
             interpretation += `Payload: ${payload.toString()}`;
             break;
     }
-    const editUrl = `encoder.html?id=${id}&payload=${payloadHex}`;
-    interpretation += `\n<a href="${editUrl}" target="_blank">Edit</a>`;
     return interpretation;
+}
+
+function generateEditLink(messageChunks) {
+    const parsed = parseMessageChunks(messageChunks);
+    if (!parsed) return "";
+    if (parsed.isAck) return "ACK";
+    if (parsed.error) return `Error: ${parsed.error}`;
+
+    const editUrl = `encoder.html?id=${parsed.id}&payload=${parsed.payloadHex}`;
+    return `<a href="${editUrl}" target="_blank">Edit Message</a>`;
 }
 
 
@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const output6bit = document.getElementById('output-6bit');
   const outputRawId = document.getElementById('output-raw-id');
   const outputPayload = document.getElementById('output-payload');
+  const outputEdit = document.getElementById('output-edit');
 
   function decodeInput() {
     const lines = input.value.split('\n').filter(line => line.trim() !== '');
@@ -211,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     output6bit.textContent = '';
     outputPayload.textContent = '';
     outputRawId.textContent = '';
+    outputEdit.innerHTML = '';
 
     for (const line of lines) {
       const hexString = line.replace(/0x/g, '').replace(/0b/g, '').replace(/\s/g, '');
@@ -287,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     outputRawId.innerHTML = messages.map(decodeRawId).join('<hr>');
     outputPayload.innerHTML = messages.map(decodePayload).join('<hr>');
+    outputEdit.innerHTML = messages.map(generateEditLink).join('<hr>');
     if (leftoverBuffer.length > 0) {
       const leftover = leftoverBuffer.map(b => `0b${b.toString(2).padStart(6, '0')}`).join(' ');
       outputPayload.innerHTML += `<br><br>Warning: ${leftoverBuffer.length} leftover 6-bit chunk(s): ${leftover}`;
