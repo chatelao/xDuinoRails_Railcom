@@ -264,11 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const examples = {
     "Short Address": "93 66",
-    "Long Address": "8E B1 93 53",
+    "Long Address": "A3 95 96 A3",
     "POM Command": "AC A3 A6 9C",
     "STAT4 Turnout Status": "8B B4",
     "Message with ACK": "93 66 0F 93 53",
-    "Long Address (Manual)": "8E B1 93 53 0F 8E B1 93 53",
+    "Long Address (Manual)": "A3 95 96 A3 0F A3 95 96 A3",
     "Accessory Address": "8E A3 96 63 0F 8D B2 95 56",
   };
 
