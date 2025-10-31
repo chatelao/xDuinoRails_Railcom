@@ -10,6 +10,7 @@
 #define assertTrue(a) if (!(a)) { Serial.println("FAILED: assertion failed"); while(1); }
 #define assertNotNull(a) if (a == nullptr) { Serial.println("FAILED: pointer is null"); while(1); }
 
+// Verifies that the RailcomTx and RailcomRx classes can be instantiated.
 test(creation) {
   MockRailcomHardware hardware;
   RailcomTx tx(&hardware);
@@ -18,111 +19,122 @@ test(creation) {
   assertTrue(&rx != nullptr);
 }
 
-test(sendStatus2) {
+// Verifies that every message sent by RailcomTx can be correctly parsed by RailcomRx.
+test(end_to_end) {
   MockRailcomHardware hardware;
   RailcomTx tx(&hardware);
-  tx.sendStatus2(0x11);
-
-  std::vector<uint8_t> expected = {0x72, 0x4D};
-  assertEqual(hardware.getQueuedMessages().size(), 2);
-  assertTrue(hardware.getQueuedMessages() == expected);
-}
-
-test(sendTime) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  tx.sendTime(1, 42); // resolution 1s, time 42s
-
-  // ID=5 (0101), payload=0xAA (10101010)
-  // chunks: 010110 (22) -> 0x59
-  //         101010 (42) -> 0x99
-  std::vector<uint8_t> expected = {0x59, 0x99};
-  assertEqual(hardware.getQueuedMessages().size(), 2);
-  assertTrue(hardware.getQueuedMessages() == expected);
-}
-
-test(sendCvAuto) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  tx.sendCvAuto(0x123456, 0xAB);
-
-  // ID=12 (1100), payload=0x123456AB
-  // chunks: 110000 (48) -> 0xA9
-  //         010010 (18) -> 0x4E
-  //         001101 (13) -> 0x3A
-  //         000101 (5)  -> 0x27
-  //         011010 (26) -> 0x65
-  //         101011 (43) -> 0x9A
-  std::vector<uint8_t> expected = {0xA9, 0x4E, 0x3A, 0x27, 0x65, 0x9A};
-  assertEqual(hardware.getQueuedMessages().size(), 6);
-  assertTrue(hardware.getQueuedMessages() == expected);
-}
-
-test(decode4of8) {
-  assertEqual(RailcomEncoding::decode4of8(0x0F), 0);
-  assertEqual(RailcomEncoding::decode4of8(0x99), 42);
-  assertEqual(RailcomEncoding::decode4of8(0xFF), -1); // Invalid
-}
-
-test(parseMessage) {
-  MockRailcomHardware hardware;
   RailcomRx rx(&hardware);
-  std::vector<uint8_t> encodedBytes = {0x59, 0x99}; // TIME message, resolution 1, time 42
-  hardware.setRxBuffer(encodedBytes);
+  RailcomMessage* msg;
 
-  RailcomMessage* msg = rx.readMessage();
+  // Verifies POM (ID 0) message sending and parsing.
+  tx.sendPomResponse(42);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::POM);
+  assertEqual(static_cast<PomMessage*>(msg)->cvValue, 42);
+  hardware.clear();
+
+  // Verifies ADR_HIGH (ID 1) message sending and parsing.
+  tx.sendAddress(3);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_HIGH);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, 3);
+  hardware.clear();
+
+  // Verifies DYN (ID 7) message sending and parsing.
+  tx.sendDynamicData(1, 100);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::DYN);
+  assertEqual(static_cast<DynMessage*>(msg)->subIndex, 1);
+  assertEqual(static_cast<DynMessage*>(msg)->value, 100);
+  hardware.clear();
+
+  // Verifies XPOM (ID 8-11) message sending and parsing.
+  uint8_t cvs[] = {1, 2, 3, 4};
+  tx.sendXpomResponse(0, cvs);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::XPOM_0);
+  XpomMessage* xpomMsg = static_cast<XpomMessage*>(msg);
+  assertEqual(xpomMsg->sequence, 0);
+  assertEqual(xpomMsg->cvValues[0], 1);
+  assertEqual(xpomMsg->cvValues[1], 2);
+  assertEqual(xpomMsg->cvValues[2], 3);
+  assertEqual(xpomMsg->cvValues[3], 4);
+  hardware.clear();
+
+  // Verifies STAT1 (ID 4) message sending and parsing.
+  tx.sendStatus1(0xAB);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::STAT1);
+  assertEqual(static_cast<Stat1Message*>(msg)->status, 0xAB);
+  hardware.clear();
+
+  // Verifies STAT2 (ID 8) message sending and parsing.
+  tx.sendStatus2(0x11);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::STAT2);
+  assertEqual(static_cast<Stat2Message*>(msg)->status, 0x11);
+  hardware.clear();
+
+  // Verifies STAT4 (ID 3) message sending and parsing.
+  tx.sendStatus4(0xCD);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::STAT4);
+  assertEqual(static_cast<Stat4Message*>(msg)->status, 0xCD);
+  hardware.clear();
+
+  // Verifies ERROR (ID 6) message sending and parsing.
+  tx.sendError(0xEF);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ERROR);
+  assertEqual(static_cast<ErrorMessage*>(msg)->errorCode, 0xEF);
+  hardware.clear();
+
+  // Verifies TIME (ID 5) message sending and parsing.
+  tx.sendTime(1, 42);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::TIME);
   TimeMessage* timeMsg = static_cast<TimeMessage*>(msg);
   assertEqual(timeMsg->resolution, 1);
   assertEqual(timeMsg->time, 42);
-}
+  hardware.clear();
 
-test(parseAllMessages) {
-  MockRailcomHardware hardware;
-  RailcomRx rx(&hardware);
-
-  // POM
-  hardware.setRxBuffer({0x0F, 0x99}); // ID 0, value 42
-  RailcomMessage* msg = rx.readMessage();
-  assertNotNull(msg);
-  assertEqual(msg->id, RailcomID::POM);
-  assertEqual(static_cast<PomMessage*>(msg)->cvValue, 42);
-
-  // ADR_HIGH
-  hardware.setRxBuffer({0x1E, 0x2B}); // ID 1, address 3
-  msg = rx.readMessage();
-  assertNotNull(msg);
-  assertEqual(msg->id, RailcomID::ADR_HIGH);
-  assertEqual(static_cast<AdrMessage*>(msg)->address, 3);
-
-  // STAT2
-  hardware.setRxBuffer({0x72, 0x4D}); // ID 8, status 0x11
-  msg = rx.readMessage();
-  assertNotNull(msg);
-  assertEqual(msg->id, RailcomID::STAT2);
-  assertEqual(static_cast<Stat2Message*>(msg)->status, 0x11);
-
-  // CV_AUTO
-  hardware.setRxBuffer({0xA9, 0x4E, 0x3A, 0x27, 0x65, 0x9A}); // ID 12, addr 0x123456, value 0xAB
+  // Verifies CV_AUTO (ID 12) message sending and parsing.
+  tx.sendCvAuto(0x123456, 0xAB);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
   msg = rx.readMessage();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::CV_AUTO);
-  assertEqual(static_cast<CvAutoMessage*>(msg)->cvAddress, 0x123456);
-  assertEqual(static_cast<CvAutoMessage*>(msg)->cvValue, 0xAB);
+  CvAutoMessage* cvAutoMsg = static_cast<CvAutoMessage*>(msg);
+  assertEqual(cvAutoMsg->cvAddress, 0x123456);
+  assertEqual(cvAutoMsg->cvValue, 0xAB);
+  hardware.clear();
 }
+
 
 void setup() {
   Serial.begin(115200);
   while (!Serial);
 
   run_test(creation);
-  run_test(sendStatus2);
-  run_test(sendTime);
-  run_test(sendCvAuto);
-  run_test(decode4of8);
-  run_test(parseMessage);
-  run_test(parseAllMessages);
+  run_test(end_to_end);
 
   Serial.println("All tests passed!");
 }

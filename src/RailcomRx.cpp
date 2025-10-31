@@ -64,17 +64,62 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             msg->address = payload >> 1; // 7-bit address is padded
             return msg;
         }
+        case RailcomID::ADR_LOW: {
+            AdrMessage* msg = new AdrMessage();
+            msg->id = id;
+            msg->address = payload >> 1; // 7-bit address is padded
+            return msg;
+        }
+        case RailcomID::DYN: {
+            DynMessage* msg = new DynMessage();
+            msg->id = id;
+            msg->subIndex = payload & 0x3F;
+            msg->value = (payload >> 6) & 0xFF;
+            return msg;
+        }
+        case RailcomID::XPOM_0:
+        case RailcomID::XPOM_1:
+        case RailcomID::XPOM_2:
+        case RailcomID::XPOM_3: {
+            if (bitCount == 36) { // XPOM message
+                XpomMessage* msg = new XpomMessage();
+                msg->id = id;
+                msg->sequence = static_cast<uint8_t>(id) - static_cast<uint8_t>(RailcomID::XPOM_0);
+                msg->cvValues[0] = (payload >> 24) & 0xFF;
+                msg->cvValues[1] = (payload >> 16) & 0xFF;
+                msg->cvValues[2] = (payload >> 8) & 0xFF;
+                msg->cvValues[3] = payload & 0xFF;
+                return msg;
+            } else { // STAT2 message
+                Stat2Message* msg = new Stat2Message();
+                msg->id = RailcomID::STAT2;
+                msg->status = payload;
+                return msg;
+            }
+        }
+        case RailcomID::STAT1: {
+            Stat1Message* msg = new Stat1Message();
+            msg->id = id;
+            msg->status = payload;
+            return msg;
+        }
+        case RailcomID::STAT4: {
+            Stat4Message* msg = new Stat4Message();
+            msg->id = id;
+            msg->status = payload;
+            return msg;
+        }
+        case RailcomID::ERROR: {
+            ErrorMessage* msg = new ErrorMessage();
+            msg->id = id;
+            msg->errorCode = payload;
+            return msg;
+        }
         case RailcomID::TIME: {
             TimeMessage* msg = new TimeMessage();
             msg->id = id;
             msg->resolution = (payload >> 7) & 0x01;
             msg->time = payload & 0x7F;
-            return msg;
-        }
-        case RailcomID::STAT2: {
-            Stat2Message* msg = new Stat2Message();
-            msg->id = id;
-            msg->status = payload;
             return msg;
         }
         case RailcomID::CV_AUTO: {
