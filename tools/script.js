@@ -75,7 +75,8 @@ function decodeRawId(messageChunks) {
   const payloadBits = numBits - 4;
   const payloadBytes = Math.ceil(payloadBits / 8);
   const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
-  return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)}`;
+  const payloadBin = payload.toString(2).padStart(payloadBytes * 8, '0');
+  return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)} (0b${formatBinary(payloadBin)})`;
 }
 
 function decodePayload(messageChunks) {
