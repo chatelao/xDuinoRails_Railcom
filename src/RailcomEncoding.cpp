@@ -1,4 +1,5 @@
 #include "RailcomEncoding.h"
+#include <map>
 
 namespace RailcomEncoding {
 
@@ -17,9 +18,27 @@ uint8_t encode4of8(uint8_t value) {
     return ENCODE_TABLE[value];
 }
 
+// Create a reverse mapping of the ENCODE_TABLE for fast decoding
+static std::map<uint8_t, int16_t> DECODE_TABLE;
+static bool DECODE_TABLE_INITIALIZED = false;
+
+void initializeDecodeTable() {
+    if (DECODE_TABLE_INITIALIZED) return;
+    for (int i = 0; i < sizeof(ENCODE_TABLE); ++i) {
+        DECODE_TABLE[ENCODE_TABLE[i]] = i;
+    }
+    DECODE_TABLE_INITIALIZED = true;
+}
+
 int16_t decode4of8(uint8_t value) {
-    // Placeholder implementation
-    return -1;
+    if (!DECODE_TABLE_INITIALIZED) {
+        initializeDecodeTable();
+    }
+    auto it = DECODE_TABLE.find(value);
+    if (it != DECODE_TABLE.end()) {
+        return it->second;
+    }
+    return -1; // Not found
 }
 
 uint8_t crc8(const uint8_t* data, size_t len, uint8_t init) {

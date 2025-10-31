@@ -1,4 +1,5 @@
 #include "RailcomRx.h"
+#include "RailcomEncoding.h"
 #include <cstring>
 #include "pico/stdlib.h"
 
@@ -36,13 +37,54 @@ RailcomMessage* RailcomRx::readMessage() {
 }
 
 RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
-    // This is a placeholder implementation. A real implementation would
-    // need to decode the 4-of-8 encoding and parse the message format.
-    if (buffer.size() >= 2) {
-        PomMessage* msg = new PomMessage();
-        msg->id = RailcomID::POM;
-        msg->cvValue = buffer[1];
-        return msg;
+    uint64_t decodedData = 0;
+    int bitCount = 0;
+    for (uint8_t byte : buffer) {
+        int16_t decodedChunk = RailcomEncoding::decode4of8(byte);
+        if (decodedChunk == -1) return nullptr; // Invalid encoding
+        decodedData = (decodedData << 6) | decodedChunk;
+        bitCount += 6;
     }
-    return nullptr;
+
+    if (bitCount < 4) return nullptr;
+
+    RailcomID id = static_cast<RailcomID>((decodedData >> (bitCount - 4)) & 0x0F);
+    uint64_t payload = decodedData & ((1ULL << (bitCount - 4)) - 1);
+
+    switch (id) {
+        case RailcomID::POM: {
+            PomMessage* msg = new PomMessage();
+            msg->id = id;
+            msg->cvValue = payload;
+            return msg;
+        }
+        case RailcomID::ADR_HIGH: {
+            AdrMessage* msg = new AdrMessage();
+            msg->id = id;
+            msg->address = payload >> 1; // 7-bit address is padded
+            return msg;
+        }
+        case RailcomID::TIME: {
+            TimeMessage* msg = new TimeMessage();
+            msg->id = id;
+            msg->resolution = (payload >> 7) & 0x01;
+            msg->time = payload & 0x7F;
+            return msg;
+        }
+        case RailcomID::STAT2: {
+            Stat2Message* msg = new Stat2Message();
+            msg->id = id;
+            msg->status = payload;
+            return msg;
+        }
+        case RailcomID::CV_AUTO: {
+            CvAutoMessage* msg = new CvAutoMessage();
+            msg->id = id;
+            msg->cvAddress = (payload >> 8) & 0xFFFFFF;
+            msg->cvValue = payload & 0xFF;
+            return msg;
+        }
+        default:
+            return nullptr;
+    }
 }
