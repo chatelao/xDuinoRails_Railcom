@@ -18,13 +18,16 @@ public:
     void sendPomResponse(uint8_t cvValue);
     virtual void sendAddress(uint16_t address);
     void sendDynamicData(uint8_t subIndex, uint8_t value);
+    void sendCvAuto(uint32_t cvAddress, uint8_t cvValue);
     void sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4]);
     void handleRerailingSearch(uint16_t address, uint32_t secondsSincePowerOn);
 
     // --- Accessory Decoder (STAT) Functions ---
     void sendServiceRequest(uint16_t accessoryAddress, bool isExtended);
     virtual void sendStatus1(uint8_t status);
+    void sendStatus2(uint8_t status);
     void sendStatus4(uint8_t status);
+    void sendTime(uint8_t resolution, uint8_t time);
     void sendError(uint8_t errorCode);
 
     // --- RCN-218 DCC-A Functions ---

@@ -49,6 +49,11 @@ void RailcomTx::sendDynamicData(uint8_t subIndex, uint8_t value) {
     sendDatagram(2, RailcomID::DYN, payload, 14);
 }
 
+void RailcomTx::sendCvAuto(uint32_t cvAddress, uint8_t cvValue) {
+    uint32_t payload = ((cvAddress & 0xFFFFFF) << 8) | cvValue;
+    sendDatagram(2, RailcomID::CV_AUTO, payload, 32);
+}
+
 void RailcomTx::sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4]) {
     if (sequence > MAX_XPOM_SEQUENCE) return;
     RailcomID id = static_cast<RailcomID>(static_cast<uint8_t>(RailcomID::XPOM_0) + sequence);
@@ -73,6 +78,15 @@ void RailcomTx::sendStatus1(uint8_t status) {
 
 void RailcomTx::sendStatus4(uint8_t status) {
     sendDatagram(2, RailcomID::STAT4, status, 8);
+}
+
+void RailcomTx::sendStatus2(uint8_t status) {
+    sendDatagram(2, RailcomID::STAT2, status, 8);
+}
+
+void RailcomTx::sendTime(uint8_t resolution, uint8_t time) {
+    uint8_t payload = ((resolution & 0x01) << 7) | (time & 0x7F);
+    sendDatagram(2, RailcomID::TIME, payload, 8);
 }
 
 void RailcomTx::sendError(uint8_t errorCode) {
