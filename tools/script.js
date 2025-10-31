@@ -27,22 +27,22 @@ function decode6of8(byte) {
 }
 
 const railcomMessageTypes = {
-  0: { length: 4 }, // POM
-  1: { length: 2 }, // ADR_HIGH
-  2: { length: 2 }, // ADR_LOW
-  3: { length: 2 }, // EXT/STAT4
-  4: { length: 2 }, // INFO/STAT1
-  5: { length: 4 }, // TIME
-  6: { length: 2 }, // ERROR
-  7: { length: 3 }, // DYN
-  8: { length: 6 }, // XPOM_0/STAT2
-  9: { length: 6 }, // XPOM_1
-  10: { length: 6 }, // XPOM_2
-  11: { length: 6 }, // XPOM_3
-  12: { length: 4 }, // CV_AUTO
-  13: { length: 4 }, // DECODER_STATE
-  14: { length: 2 }, // RERAIL
-  15: { length: 6 }, // DECODER_UNIQUE
+  0: { lengths: [4, 2] }, // POM (long, short)
+  1: { lengths: [2] },    // ADR_HIGH
+  2: { lengths: [2] },    // ADR_LOW
+  3: { lengths: [2] },    // EXT/STAT4
+  4: { lengths: [2] },    // INFO/STAT1
+  5: { lengths: [4] },    // TIME
+  6: { lengths: [2] },    // ERROR
+  7: { lengths: [3] },    // DYN
+  8: { lengths: [6, 2] }, // XPOM_0/STAT2 (long, short)
+  9: { lengths: [6] },    // XPOM_1
+  10: { lengths: [6] },   // XPOM_2
+  11: { lengths: [6] },   // XPOM_3
+  12: { lengths: [4] },   // CV_AUTO
+  13: { lengths: [4] },   // DECODER_STATE
+  14: { lengths: [2] },   // RERAIL
+  15: { lengths: [6] },   // DECODER_UNIQUE
 };
 
 
@@ -101,7 +101,10 @@ function decodePayload(messageChunks) {
     let interpretation = `ID: ${idStr} (${id})\n`;
     switch (id) {
         case 0: // POM (Programming on the Main)
-            {
+            if (payloadBits === 8) { // Short POM
+                const value = Number(payload);
+                interpretation += `Value: ${value} (0x${value.toString(16).toUpperCase()})`;
+            } else { // Long POM
                 const cv = Number((payload >> 8n) & 0xFFFn);
                 const value = Number(payload & 0xFFn);
                 interpretation += `CV: ${cv} (0x${cv.toString(16).toUpperCase()})\nValue: ${value}`;
@@ -218,6 +221,15 @@ function decodePayload(messageChunks) {
             }
             break;
         case 8: // XPOM_0/STAT2
+            if (payloadBits === 8) { // STAT2
+                interpretation += `Status: ${payload.toString()}`;
+            } else { // XPOM_0
+                const seq = Number((payload >> 24n) & 0b11n);
+                const cv_xp = Number((payload >> 8n) & 0xFFFFn);
+                const val_xp = Number(payload & 0xFFn);
+                interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
+            }
+            break;
         case 9: // XPOM_1
         case 10: // XPOM_2
         case 11: // XPOM_3
@@ -349,20 +361,33 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       let subBuffer = group;
-      while (subBuffer.length >= 2) {
+      while (subBuffer.length >= 2) { // Minimum message length is 2 chunks
         const firstChunk = subBuffer[0];
         if (typeof firstChunk !== 'number') {
           break;
         }
         const id = firstChunk >> 2;
-        const messageLength = railcomMessageTypes[id]?.length;
+        const possibleLengths = railcomMessageTypes[id]?.lengths;
 
-        if (!messageLength || subBuffer.length < messageLength) {
+        if (!possibleLengths) {
           break;
         }
 
-        const messageChunks = subBuffer.splice(0, messageLength);
-        messages.push(messageChunks);
+        let matchedLength = 0;
+        for (const len of possibleLengths) { // The lengths are sorted from longest to shortest
+          if (subBuffer.length >= len) {
+            matchedLength = len;
+            break; // Found the longest possible match
+          }
+        }
+
+        if (matchedLength > 0) {
+          const messageChunks = subBuffer.splice(0, matchedLength);
+          messages.push(messageChunks);
+        } else {
+          // Not enough chunks in the buffer for any valid length of this message ID
+          break;
+        }
       }
       if (subBuffer.length > 0) {
         leftoverBuffer.push(...subBuffer);
