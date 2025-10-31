@@ -108,6 +108,11 @@ function decodePayload(messageChunks) {
             }
             break;
         case 1: // ADR_HIGH (Address High Byte)
+            {
+                const part = Number(payload & 0x3Fn); // Per RCN-217, address is in the lower 6 bits
+                interpretation += `Address part: ${part} (0b${part.toString(2).padStart(6, '0')})`;
+            }
+            break;
         case 2: // ADR_LOW (Address Low Byte)
             {
                 const part = Number(payload);
