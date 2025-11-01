@@ -61,13 +61,15 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
         case RailcomID::ADR_HIGH: {
             AdrMessage* msg = new AdrMessage();
             msg->id = id;
-            msg->address = payload >> 1; // 7-bit address is padded
+            // Per RCN-217 for long addresses, the address is in the lower 6 bits.
+            msg->address = payload & 0x3F;
             return msg;
         }
         case RailcomID::ADR_LOW: {
             AdrMessage* msg = new AdrMessage();
             msg->id = id;
-            msg->address = payload >> 1; // 7-bit address is padded
+            // The low part of a long address is the full 8-bit payload.
+            msg->address = payload;
             return msg;
         }
         case RailcomID::DYN: {

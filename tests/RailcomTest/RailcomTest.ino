@@ -135,8 +135,37 @@ void setup() {
 
   run_test(creation);
   run_test(end_to_end);
+  run_test(long_address_e2e);
 
   Serial.println("All tests passed!");
+}
+
+// Verifies the end-to-end transmission and reception of a long address.
+test(long_address_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t longAddress = 4097; // Example long address (0x1001)
+
+  // Send the high part of the address.
+  // The internal alternator in RailcomTx starts with the high part.
+  tx.sendAddress(longAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_HIGH);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, (longAddress >> 8) & 0x3F);
+  hardware.clear();
+
+  // Send the low part of the address.
+  tx.sendAddress(longAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_LOW);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, longAddress & 0xFF);
+  hardware.clear();
 }
 
 void loop() {
