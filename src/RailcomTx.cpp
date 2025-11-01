@@ -33,15 +33,19 @@ void RailcomTx::sendPomResponse(uint8_t cvValue) {
 
 void RailcomTx::sendAddress(uint16_t address) {
     if (address >= MIN_SHORT_ADDRESS && address <= MAX_SHORT_ADDRESS) { // Short
-        sendDatagram(1, RailcomID::ADR_HIGH, address, 7);
+        if (_long_address_alternator) { // Send ADR_HIGH with 0 payload
+            sendDatagram(1, RailcomID::ADR_HIGH, 0, 8);
+        } else { // Send ADR_LOW with the address
+            sendDatagram(1, RailcomID::ADR_LOW, address & 0x7F, 8);
+        }
     } else { // Long
         if (_long_address_alternator) {
             sendDatagram(1, RailcomID::ADR_HIGH, (address >> 8) & 0x3F, 6);
         } else {
             sendDatagram(1, RailcomID::ADR_LOW, address & 0xFF, 8);
         }
-        _long_address_alternator = !_long_address_alternator;
     }
+    _long_address_alternator = !_long_address_alternator;
 }
 
 void RailcomTx::sendDynamicData(uint8_t subIndex, uint8_t value) {
