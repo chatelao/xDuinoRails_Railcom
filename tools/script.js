@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   lastAdrHigh = part;
                   if (lastAdrLow !== null) {
                       const fullAddress = (lastAdrHigh << 8) | lastAdrLow;
-                      outputAddress.textContent = `${fullAddress} (0b${formatBinary(fullAddress.toString(2).padStart(14, '0'))})`;
+                      outputAddress.textContent = `Adresse: ${fullAddress} (0b${formatBinary(fullAddress.toString(2).padStart(14, '0'))})`;
                   }
               }
               break;
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   lastAdrLow = part;
                   if (lastAdrHigh !== null) {
                       const fullAddress = (lastAdrHigh << 8) | lastAdrLow;
-                      outputAddress.textContent = `${fullAddress} (0b${formatBinary(fullAddress.toString(2).padStart(14, '0'))})`;
+                      outputAddress.textContent = `Adresse: ${fullAddress} (0b${formatBinary(fullAddress.toString(2).padStart(14, '0'))})`;
                   }
               }
               break;
