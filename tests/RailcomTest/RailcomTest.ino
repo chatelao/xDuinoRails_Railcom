@@ -19,6 +19,33 @@ test(creation) {
   assertTrue(&rx != nullptr);
 }
 
+// Verifies the end-to-end transmission and reception of a short address.
+test(short_address_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t shortAddress = 100;
+
+  // Send the low part of the address first (alternator is initially false).
+  tx.sendAddress(shortAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_LOW);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, shortAddress & 0x7F);
+  hardware.clear();
+
+  // Send the high part of the address (alternator is now true).
+  tx.sendAddress(shortAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.readMessage();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_HIGH);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, 0);
+  hardware.clear();
+}
+
 // Verifies that every message sent by RailcomTx can be correctly parsed by RailcomRx.
 test(end_to_end) {
   MockRailcomHardware hardware;
@@ -136,6 +163,7 @@ void setup() {
   run_test(creation);
   run_test(end_to_end);
   run_test(long_address_e2e);
+  run_test(short_address_e2e);
 
   Serial.println("All tests passed!");
 }
