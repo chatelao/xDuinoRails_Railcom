@@ -46,238 +46,254 @@ const railcomMessageTypes = {
 };
 
 
-function formatHex(hexString) {
-    return hexString.replace(/(.{2})/g, '$1_').slice(0, -1);
-}
-
-function formatBinary(binaryString) {
-    let result = '';
-    for (let i = 0; i < binaryString.length; i += 4) {
-        result += binaryString.substring(i, i + 4) + '_';
-    }
-    return result.slice(0, -1);
-}
-
-function decodeRawId(messageChunks) {
-  if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
-    return 'ACK';
-  }
-  if (messageChunks.length === 0) return "";
-  let combinedValue = 0n;
-  for (const val of messageChunks) {
-    combinedValue = (combinedValue << 6n) | BigInt(val);
-  }
-  const numBits = messageChunks.length * 6;
-  if (numBits < 4) return "Error: Not enough bits for an ID.";
-  const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
-  const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
-  const idStr = RailcomID[id] || `Unknown ID`;
-  const payloadBits = numBits - 4;
-  const payloadBytes = Math.ceil(payloadBits / 8);
-  const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
-  const payloadBin = payload.toString(2).padStart(payloadBytes * 8, '0');
-  return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)} (0b${formatBinary(payloadBin)})`;
-}
-
-function decodePayload(messageChunks) {
-    if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
-        return 'ACK';
-    }
-    if (messageChunks.length === 0) return "";
-    let combinedValue = 0n;
-    for (const val of messageChunks) {
-        combinedValue = (combinedValue << 6n) | BigInt(val);
-    }
-    const numBits = BigInt(messageChunks.length * 6);
-    if (numBits < 4) return "Error: Not enough bits for an ID.";
-
-    const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
-    const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
-    const payloadBits = Number(numBits - 4n);
-    const payloadBytes = Math.ceil(payloadBits / 8);
-    const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
-    const idStr = RailcomID[id] || `Unknown ID`;
-
-    let interpretation = `ID: ${idStr} (${id})\n`;
-    switch (id) {
-        case 0: // POM (Programming on the Main)
-            if (payloadBits === 8) { // Short POM
-                const value = Number(payload);
-                interpretation += `Value: ${value} (0x${value.toString(16).toUpperCase()})`;
-            } else { // Long POM
-                const cv = Number((payload >> 8n) & 0xFFFn);
-                const value = Number(payload & 0xFFn);
-                interpretation += `CV: ${cv} (0x${cv.toString(16).toUpperCase()})\nValue: ${value}`;
-            }
-            break;
-        case 1: // ADR_HIGH (Address High Byte)
-            {
-                const part = Number(payload & 0x3Fn); // Per RCN-217, address is in the lower 6 bits
-                interpretation += `Address part: ${part} (0b${part.toString(2).padStart(6, '0')})`;
-            }
-            break;
-        case 2: // ADR_LOW (Address Low Byte)
-            {
-                const part = Number(payload);
-                interpretation += `Address part: ${part} (0b${part.toString(2).padStart(8, '0')})`;
-            }
-            break;
-        case 3: // EXT/STAT4 (Extended info / Status of 4 ports)
-            {
-                interpretation += `Turnout Status:\n`;
-                for (let i = 3; i >= 0; i--) {
-                    const turnoutNum = i + 1;
-                    const greenBit = (Number(payload) >> (i * 2 + 1)) & 1;
-                    const redBit = (Number(payload) >> (i * 2)) & 1;
-                    let status = 'Unknown';
-                    if (greenBit === 1) {
-                        status = 'Green (straight/right/go)';
-                    } else if (redBit === 1) {
-                        status = 'Red (turn/left/stop)';
-                    } else {
-                        status = 'Off';
-                    }
-                    interpretation += `  Pair ${turnoutNum}: ${status}\n`;
-                }
-            }
-            break;
-        case 4: // INFO/STAT1 (Information / Status of 1 port)
-            {
-                interpretation += `Status: ${payload.toString()}\n(Note: Meaning is application-specific)`;
-            }
-            break;
-        case 5: // TIME
-            {
-                interpretation += `Time: ${payload.toString()} ms`;
-            }
-            break;
-        case 6: // ERROR
-            {
-                interpretation += `Error code: ${payload.toString()}\n(Note: 1=DCC, 2=Motor, 3=Function, etc.)`;
-            }
-            break;
-        case 7: // DYN (Dynamic Variable)
-            {
-                const dv = Number((payload >> 6n) & 0xFFn);
-                const subindex = Number(payload & 0x3Fn);
-                interpretation += `Value: ${dv} (0x${dv.toString(16).toUpperCase()})\nSubindex: ${subindex}`;
-                switch (subindex) {
-                    case 0: interpretation += " (True speed, part 1)"; break;
-                    case 1: interpretation += " (True speed, part 2)"; break;
-                    case 2:
-                        const last = dv & 0x7F;
-                        interpretation += ` (SUSI load: ${last} / Speed: ${dv >> 7} GGGGGGG)`;
-                        break;
-                    case 3:
-                        const major = (dv >> 4) & 0x0F;
-                        const minor = dv & 0x0F;
-                        interpretation += ` (RailCom Version ${major}.${minor})`;
-                        break;
-                    case 4: interpretation += " (Change Flags from RCN-218)"; break;
-                    case 5: interpretation += " (Flag Register)"; break;
-                    case 6: interpretation += " (Input Register)"; break;
-                    case 7: interpretation += ` (Reception statistics: ${dv} % bad packets)`; break;
-                    case 8: interpretation += ` (Container 1 level: ${dv} %)`; break;
-                    case 9: interpretation += ` (Container 2 level: ${dv} %)`; break;
-                    case 10: interpretation += ` (Container 3 level: ${dv} %)`; break;
-                    case 11: interpretation += ` (Container 4 level: ${dv} %)`; break;
-                    case 12: interpretation += ` (Container 5 level: ${dv} %)`; break;
-                    case 13: interpretation += ` (Container 6 level: ${dv} %)`; break;
-                    case 14: interpretation += ` (Container 7 level: ${dv} %)`; break;
-                    case 15: interpretation += ` (Container 8 level: ${dv} %)`; break;
-                    case 16: interpretation += ` (Container 9 level: ${dv} %)`; break;
-                    case 17: interpretation += ` (Container 10 level: ${dv} %)`; break;
-                    case 18: interpretation += ` (Container 11 level: ${dv} %)`; break;
-                    case 19: interpretation += ` (Container 12 level: ${dv} %)`; break;
-                    case 20: interpretation += " (Location address)"; break;
-                    case 21: interpretation += " (Warning and alarm messages)"; break;
-                    case 22: interpretation += " (Odometer)"; break;
-                    case 23: interpretation += " (Maintenance interval)"; break;
-                    case 24: case 25: interpretation += " (Reserved)"; break;
-                    case 26:
-                        const temp = -50 + dv;
-                        interpretation += ` (Temperature: ${temp}°C)`;
-                        break;
-                    case 27: interpretation += " (Direction status byte for East-West control)"; break;
-                    case 46:
-                        const voltage = 5 + dv * 0.1;
-                        interpretation += ` (Track voltage: ${voltage.toFixed(1)} V)`;
-                        break;
-                    case 47:
-                        const distance = dv * 4;
-                        interpretation += ` (Calculated stopping distance: ${distance} m)`;
-                        break;
-                    case 28: case 29: case 30: case 31: case 32: case 33: case 34: case 35:
-                    case 36: case 37: case 38: case 39: case 40: case 41: case 42: case 43:
-                    case 44: case 45: case 48: case 49: case 50: case 51: case 52: case 53:
-                    case 54: case 55: case 56: case 57: case 58: case 59: case 60: case 61:
-                    case 62: case 63:
-                        interpretation += " (Reserved)";
-                        break;
-                    default:
-                        interpretation += " (Unknown)";
-                        break;
-                }
-            }
-            break;
-        case 8: // XPOM_0/STAT2
-            if (payloadBits === 8) { // STAT2
-                interpretation += `Status: ${payload.toString()}`;
-            } else { // XPOM_0
-                const seq = Number((payload >> 24n) & 0b11n);
-                const cv_xp = Number((payload >> 8n) & 0xFFFFn);
-                const val_xp = Number(payload & 0xFFn);
-                interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
-            }
-            break;
-        case 9: // XPOM_1
-        case 10: // XPOM_2
-        case 11: // XPOM_3
-            {
-                const seq = Number((payload >> 24n) & 0b11n);
-                const cv_xp = Number((payload >> 8n) & 0xFFFFn);
-                const val_xp = Number(payload & 0xFFn);
-                interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
-            }
-            break;
-        case 12: // CV_AUTO (Automatic CV Reporting)
-            {
-                const cv_auto = Number((payload >> 8n) & 0xFFFn);
-                const val_auto = Number(payload & 0xFFn);
-                interpretation += `CV: ${cv_auto}\nValue: ${val_auto}`;
-            }
-            break;
-        case 13: // DECODER_STATE
-            {
-                interpretation += `State: ${payload.toString()}\n(Note: Meaning is application-specific, e.g., motor status, function state)`;
-            }
-            break;
-        case 14: // RERAIL
-            {
-                interpretation += `Rerail counter: ${payload.toString()}`;
-            }
-            break;
-        case 15: // DECODER_UNIQUE
-            {
-                interpretation += `Unique ID part: ${payload.toString()}`;
-            }
-            break;
-        default:
-            interpretation += `Payload: ${payload.toString()}`;
-            break;
-    }
-    const editUrl = `encoder.html?id=${id}&payload=${payloadHex}`;
-    interpretation += `\n<a href="${editUrl}" target="_blank">Edit</a>`;
-    return interpretation;
-}
-
-
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('input');
   const output6bit = document.getElementById('output-6bit');
   const outputRawId = document.getElementById('output-raw-id');
   const outputPayload = document.getElementById('output-payload');
+  const outputAddress = document.getElementById('output-address');
+  const addressBox = document.getElementById('address-box');
   const exampleSelect = document.getElementById('example-select');
+
+  let lastAdrHigh = null;
+  let lastAdrLow = null;
+
+  function formatHex(hexString) {
+    return hexString.replace(/(.{2})/g, '$1_').slice(0, -1);
+  }
+
+  function formatBinary(binaryString) {
+    let result = '';
+    for (let i = 0; i < binaryString.length; i += 4) {
+        result += binaryString.substring(i, i + 4) + '_';
+    }
+    return result.slice(0, -1);
+  }
+
+  function decodeRawId(messageChunks) {
+    if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
+      return 'ACK';
+    }
+    if (messageChunks.length === 0) return "";
+    let combinedValue = 0n;
+    for (let i = 0; i < messageChunks.length; i++) {
+      const val = messageChunks[i];
+      combinedValue = (combinedValue << 6n) | BigInt(val);
+    }
+    const numBits = messageChunks.length * 6;
+    if (numBits < 4) return "Error: Not enough bits for an ID.";
+    const id = Number((combinedValue >> BigInt(numBits - 4)) & 0b1111n);
+    const payload = combinedValue & ((1n << BigInt(numBits - 4)) - 1n);
+    const idStr = RailcomID[id] || `Unknown ID`;
+    const payloadBits = numBits - 4;
+    const payloadBytes = Math.ceil(payloadBits / 8);
+    const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
+    const payloadBin = payload.toString(2).padStart(payloadBytes * 8, '0');
+    return `ID: ${idStr} (${id})\nPayload: 0x${formatHex(payloadHex)} (0b${formatBinary(payloadBin)})`;
+  }
+
+  function decodePayload(messageChunks) {
+      if (messageChunks.length === 1 && messageChunks[0] === 'ACK') {
+          return 'ACK';
+      }
+      if (messageChunks.length === 0) return "";
+      let combinedValue = 0n;
+      for (let i = 0; i < messageChunks.length; i++) {
+          const val = messageChunks[i];
+          combinedValue = (combinedValue << 6n) | BigInt(val);
+      }
+      const numBits = BigInt(messageChunks.length * 6);
+      if (numBits < 4) return "Error: Not enough bits for an ID.";
+
+      const id = Number((combinedValue >> (numBits - 4n)) & 0b1111n);
+      const payload = combinedValue & ((1n << (numBits - 4n)) - 1n);
+      const payloadBits = Number(numBits - 4n);
+      const payloadBytes = Math.ceil(payloadBits / 8);
+      const payloadHex = payload.toString(16).toUpperCase().padStart(payloadBytes * 2, '0');
+      const idStr = RailcomID[id] || `Unknown ID`;
+
+      let interpretation = `ID: ${idStr} (${id})\n`;
+      switch (id) {
+          case 0: // POM (Programming on the Main)
+              if (payloadBits === 8) { // Short POM
+                  const value = Number(payload);
+                  interpretation += `Value: ${value} (0x${value.toString(16).toUpperCase()})`;
+              } else { // Long POM
+                  const cv = Number((payload >> 8n) & 0xFFFn);
+                  const value = Number(payload & 0xFFn);
+                  interpretation += `CV: ${cv} (0x${cv.toString(16).toUpperCase()})\nValue: ${value}`;
+              }
+              break;
+          case 1: // ADR_HIGH (Address High Byte)
+              {
+                  const part = Number(payload & 0x3Fn); // Per RCN-217, address is in the lower 6 bits
+                  interpretation += `Address part: ${part} (0b${part.toString(2).padStart(6, '0')})`;
+                  lastAdrHigh = part;
+                  if (lastAdrLow !== null) {
+                      const fullAddress = (lastAdrHigh << 8) | lastAdrLow;
+                      outputAddress.textContent = `${fullAddress} (0b${formatBinary(fullAddress.toString(2).padStart(14, '0'))})`;
+                  }
+              }
+              break;
+          case 2: // ADR_LOW (Address Low Byte)
+              {
+                  const part = Number(payload);
+                  interpretation += `Address part: ${part} (0b${part.toString(2).padStart(8, '0')})`;
+                  lastAdrLow = part;
+                  if (lastAdrHigh !== null) {
+                      const fullAddress = (lastAdrHigh << 8) | lastAdrLow;
+                      outputAddress.textContent = `${fullAddress} (0b${formatBinary(fullAddress.toString(2).padStart(14, '0'))})`;
+                  }
+              }
+              break;
+          case 3: // EXT/STAT4 (Extended info / Status of 4 ports)
+              {
+                  interpretation += `Turnout Status:\n`;
+                  for (let i = 3; i >= 0; i--) {
+                      const turnoutNum = i + 1;
+                      const greenBit = (Number(payload) >> (i * 2 + 1)) & 1;
+                      const redBit = (Number(payload) >> (i * 2)) & 1;
+                      let status = 'Unknown';
+                      if (greenBit === 1) {
+                          status = 'Green (straight/right/go)';
+                      } else if (redBit === 1) {
+                          status = 'Red (turn/left/stop)';
+                      } else {
+                          status = 'Off';
+                      }
+                      interpretation += `  Pair ${turnoutNum}: ${status}\n`;
+                  }
+              }
+              break;
+          case 4: // INFO/STAT1 (Information / Status of 1 port)
+              {
+                  interpretation += `Status: ${payload.toString()}\n(Note: Meaning is application-specific)`;
+              }
+              break;
+          case 5: // TIME
+              {
+                  interpretation += `Time: ${payload.toString()} ms`;
+              }
+              break;
+          case 6: // ERROR
+              {
+                  interpretation += `Error code: ${payload.toString()}\n(Note: 1=DCC, 2=Motor, 3=Function, etc.)`;
+              }
+              break;
+          case 7: // DYN (Dynamic Variable)
+              {
+                  const dv = Number((payload >> 6n) & 0xFFn);
+                  const subindex = Number(payload & 0x3Fn);
+                  interpretation += `Value: ${dv} (0x${dv.toString(16).toUpperCase()})\nSubindex: ${subindex}`;
+                  switch (subindex) {
+                      case 0: interpretation += " (True speed, part 1)"; break;
+                      case 1: interpretation += " (True speed, part 2)"; break;
+                      case 2:
+                          const last = dv & 0x7F;
+                          interpretation += ` (SUSI load: ${last} / Speed: ${dv >> 7} GGGGGGG)`;
+                          break;
+                      case 3:
+                          const major = (dv >> 4) & 0x0F;
+                          const minor = dv & 0x0F;
+                          interpretation += ` (RailCom Version ${major}.${minor})`;
+                          break;
+                      case 4: interpretation += " (Change Flags from RCN-218)"; break;
+                      case 5: interpretation += " (Flag Register)"; break;
+                      case 6: interpretation += " (Input Register)"; break;
+                      case 7: interpretation += ` (Reception statistics: ${dv} % bad packets)`; break;
+                      case 8: interpretation += ` (Container 1 level: ${dv} %)`; break;
+                      case 9: interpretation += ` (Container 2 level: ${dv} %)`; break;
+                      case 10: interpretation += ` (Container 3 level: ${dv} %)`; break;
+                      case 11: interpretation += ` (Container 4 level: ${dv} %)`; break;
+                      case 12: interpretation += ` (Container 5 level: ${dv} %)`; break;
+                      case 13: interpretation += ` (Container 6 level: ${dv} %)`; break;
+                      case 14: interpretation += ` (Container 7 level: ${dv} %)`; break;
+                      case 15: interpretation += ` (Container 8 level: ${dv} %)`; break;
+                      case 16: interpretation += ` (Container 9 level: ${dv} %)`; break;
+                      case 17: interpretation += ` (Container 10 level: ${dv} %)`; break;
+                      case 18: interpretation += ` (Container 11 level: ${dv} %)`; break;
+                      case 19: interpretation += ` (Container 12 level: ${dv} %)`; break;
+                      case 20: interpretation += " (Location address)"; break;
+                      case 21: interpretation += " (Warning and alarm messages)"; break;
+                      case 22: interpretation += " (Odometer)"; break;
+                      case 23: interpretation += " (Maintenance interval)"; break;
+                      case 24: case 25: interpretation += " (Reserved)"; break;
+                      case 26:
+                          const temp = -50 + dv;
+                          interpretation += ` (Temperature: ${temp}°C)`;
+                          break;
+                      case 27: interpretation += " (Direction status byte for East-West control)"; break;
+                      case 46:
+                          const voltage = 5 + dv * 0.1;
+                          interpretation += ` (Track voltage: ${voltage.toFixed(1)} V)`;
+                          break;
+                      case 47:
+                          const distance = dv * 4;
+                          interpretation += ` (Calculated stopping distance: ${distance} m)`;
+                          break;
+                      case 28: case 29: case 30: case 31: case 32: case 33: case 34: case 35:
+                      case 36: case 37: case 38: case 39: case 40: case 41: case 42: case 43:
+                      case 44: case 45: case 48: case 49: case 50: case 51: case 52: case 53:
+                      case 54: case 55: case 56: case 57: case 58: case 59: case 60: case 61:
+                      case 62: case 63:
+                          interpretation += " (Reserved)";
+                          break;
+                      default:
+                          interpretation += " (Unknown)";
+                          break;
+                  }
+              }
+              break;
+          case 8: // XPOM_0/STAT2
+              if (payloadBits === 8) { // STAT2
+                  interpretation += `Status: ${payload.toString()}`;
+              } else { // XPOM_0
+                  const seq = Number((payload >> 24n) & 0b11n);
+                  const cv_xp = Number((payload >> 8n) & 0xFFFFn);
+                  const val_xp = Number(payload & 0xFFn);
+                  interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
+              }
+              break;
+          case 9: // XPOM_1
+          case 10: // XPOM_2
+          case 11: // XPOM_3
+              {
+                  const seq = Number((payload >> 24n) & 0b11n);
+                  const cv_xp = Number((payload >> 8n) & 0xFFFFn);
+                  const val_xp = Number(payload & 0xFFn);
+                  interpretation += `Sequence: ${seq} of 3\nCV: ${cv_xp}\nValue: ${val_xp}`;
+              }
+              break;
+          case 12: // CV_AUTO (Automatic CV Reporting)
+              {
+                  const cv_auto = Number((payload >> 8n) & 0xFFFn);
+                  const val_auto = Number(payload & 0xFFn);
+                  interpretation += `CV: ${cv_auto}\nValue: ${val_auto}`;
+              }
+              break;
+          case 13: // DECODER_STATE
+              {
+                  interpretation += `State: ${payload.toString()}\n(Note: Meaning is application-specific, e.g., motor status, function state)`;
+              }
+              break;
+          case 14: // RERAIL
+              {
+                  interpretation += `Rerail counter: ${payload.toString()}`;
+              }
+              break;
+          case 15: // DECODER_UNIQUE
+              {
+                  interpretation += `Unique ID part: ${payload.toString()}`;
+              }
+              break;
+          default:
+              interpretation += `Payload: ${payload.toString()}`;
+              break;
+      }
+      const editUrl = `encoder.html?id=${id}&payload=${payloadHex}`;
+      interpretation += `\n<a href="${editUrl}" target="_blank">Edit</a>`;
+      return interpretation;
+  }
 
   const examples = {
     "Short Address": "93 66",
@@ -307,6 +323,10 @@ document.addEventListener('DOMContentLoaded', () => {
     output6bit.textContent = '';
     outputPayload.textContent = '';
     outputRawId.textContent = '';
+    if (outputAddress) {
+        outputAddress.textContent = '';
+        addressBox.style.display = 'none';
+    }
 
     for (const line of lines) {
       const hexString = line.replace(/0x/g, '').replace(/0b/g, '').replace(/\s/g, '');
@@ -396,11 +416,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     outputRawId.innerHTML = messages.map(decodeRawId).join('<hr>');
     outputPayload.innerHTML = messages.map(decodePayload).join('<hr>');
+
+    if (lastAdrHigh !== null && lastAdrLow !== null) {
+        addressBox.style.display = 'block';
+    }
+
     if (leftoverBuffer.length > 0) {
       const leftover = leftoverBuffer.map(b => `0b${b.toString(2).padStart(6, '0')}`).join(' ');
       outputPayload.innerHTML += `<br><br>Warning: ${leftoverBuffer.length} leftover 6-bit chunk(s): ${leftover}`;
     }
   }
 
-  input.addEventListener('input', decodeInput);
+  document.getElementById('decode-button').addEventListener('click', decodeInput);
 });
