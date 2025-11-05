@@ -28,12 +28,101 @@ bool RailcomRx::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
     return !buffer.empty();
 }
 
-RailcomMessage* RailcomRx::readMessage() {
-    std::vector<uint8_t> buffer;
-    if (read_raw_bytes(buffer, 50)) {
-        return parseMessage(buffer);
+RailcomMessage* RailcomRx::read() {
+    // Clear previous message
+    if (_lastMessage != nullptr) {
+        delete _lastMessage;
+        _lastMessage = nullptr;
+    }
+    _lastRawBytes.clear();
+
+    if (read_raw_bytes(_lastRawBytes, 50)) {
+        _lastMessage = parseMessage(_lastRawBytes);
+        return _lastMessage;
     }
     return nullptr;
+}
+
+void RailcomRx::print(Print& stream) {
+    if (_lastMessage == nullptr) {
+        stream.println("No Railcom message received.");
+        return;
+    }
+
+    stream.print("Raw bytes: ");
+    for (size_t i = 0; i < _lastRawBytes.size(); ++i) {
+        char buf[4];
+        sprintf(buf, "%02X ", _lastRawBytes[i]);
+        stream.print(buf);
+    }
+    stream.println();
+
+    stream.println("Decoded data:");
+    switch (_lastMessage->id) {
+        case RailcomID::POM:
+            stream.print("  ID: POM (0)\n");
+            stream.printf("  CV Value: %u\n", static_cast<PomMessage*>(_lastMessage)->cvValue);
+            break;
+        case RailcomID::ADR_HIGH: {
+            uint16_t adrPart = static_cast<AdrMessage*>(_lastMessage)->address;
+            _lastAdrHigh = adrPart;
+            stream.print("  ID: ADR_HIGH (1)\n");
+            stream.printf("  Address part: %u\n", adrPart);
+            break;
+        }
+        case RailcomID::ADR_LOW: {
+            uint16_t adrPart = static_cast<AdrMessage*>(_lastMessage)->address;
+            stream.print("  ID: ADR_LOW (2)\n");
+            stream.printf("  Address part: %u\n", adrPart);
+            if (_lastAdrHigh != 0) {
+                uint16_t fullAddress = (_lastAdrHigh << 8) | adrPart;
+                stream.printf("  Effective Address: %u\n", fullAddress);
+                _lastAdrHigh = 0; // Reset after use
+            }
+            break;
+        }
+        case RailcomID::STAT4: {
+             stream.print("  ID: STAT4 (3)\n");
+             uint8_t status = static_cast<Stat4Message*>(_lastMessage)->status;
+             stream.println("  Turnout Status:");
+             for (int i = 3; i >= 0; i--) {
+                 const int turnoutNum = i + 1;
+                 const bool greenBit = (status >> (i * 2 + 1)) & 1;
+                 const bool redBit = (status >> (i * 2)) & 1;
+                 stream.printf("    Pair %d: ", turnoutNum);
+                 if (greenBit) {
+                     stream.println("Green (straight/right/go)");
+                 } else if (redBit) {
+                     stream.println("Red (turn/left/stop)");
+                 } else {
+                     stream.println("Off");
+                 }
+             }
+             break;
+        }
+        case RailcomID::DYN: {
+             DynMessage* msg = static_cast<DynMessage*>(_lastMessage);
+             stream.print("  ID: DYN (7)\n");
+             stream.printf("  SubIndex: %u\n", msg->subIndex);
+             stream.printf("  Value: %u\n", msg->value);
+             break;
+        }
+        case RailcomID::DECODER_STATE:
+            stream.print("  ID: DECODER_STATE (13)\n");
+            stream.printf("  Application-specific state: %lu\n", static_cast<DecoderStateMessage*>(_lastMessage)->state);
+            break;
+        case RailcomID::RERAIL:
+            stream.print("  ID: RERAIL (14)\n");
+            stream.printf("  Rerail counter: %u\n", static_cast<RerailMessage*>(_lastMessage)->counter);
+            break;
+        case RailcomID::DECODER_UNIQUE:
+            stream.print("  ID: DECODER_UNIQUE (15)\n");
+            stream.printf("  Unique ID part: %lu\n", static_cast<DecoderUniqueMessage*>(_lastMessage)->uniqueId);
+            break;
+        default:
+            stream.printf("  ID: %d (Unknown)\n", static_cast<int>(_lastMessage->id));
+            break;
+    }
 }
 
 RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
@@ -129,6 +218,24 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             msg->id = id;
             msg->cvAddress = (payload >> 8) & 0xFFFFFF;
             msg->cvValue = payload & 0xFF;
+            return msg;
+        }
+        case RailcomID::DECODER_STATE: {
+            DecoderStateMessage* msg = new DecoderStateMessage();
+            msg->id = id;
+            msg->state = payload;
+            return msg;
+        }
+        case RailcomID::RERAIL: {
+            RerailMessage* msg = new RerailMessage();
+            msg->id = id;
+            msg->counter = payload;
+            return msg;
+        }
+        case RailcomID::DECODER_UNIQUE: {
+            DecoderUniqueMessage* msg = new DecoderUniqueMessage();
+            msg->id = id;
+            msg->uniqueId = payload;
             return msg;
         }
         default:

@@ -30,7 +30,7 @@ test(short_address_e2e) {
   // Send the low part of the address first (alternator is initially false).
   tx.sendAddress(shortAddress);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_LOW);
   assertEqual(static_cast<AdrMessage*>(msg)->address, shortAddress & 0x7F);
@@ -39,7 +39,7 @@ test(short_address_e2e) {
   // Send the high part of the address (alternator is now true).
   tx.sendAddress(shortAddress);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
   assertEqual(static_cast<AdrMessage*>(msg)->address, 0);
@@ -56,7 +56,7 @@ test(end_to_end) {
   // Verifies POM (ID 0) message sending and parsing.
   tx.sendPomResponse(42);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::POM);
   assertEqual(static_cast<PomMessage*>(msg)->cvValue, 42);
@@ -65,7 +65,7 @@ test(end_to_end) {
   // Verifies ADR_HIGH (ID 1) message sending and parsing.
   tx.sendAddress(3);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
   assertEqual(static_cast<AdrMessage*>(msg)->address, 3);
@@ -74,7 +74,7 @@ test(end_to_end) {
   // Verifies DYN (ID 7) message sending and parsing.
   tx.sendDynamicData(1, 100);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::DYN);
   assertEqual(static_cast<DynMessage*>(msg)->subIndex, 1);
@@ -85,7 +85,7 @@ test(end_to_end) {
   uint8_t cvs[] = {1, 2, 3, 4};
   tx.sendXpomResponse(0, cvs);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::XPOM_0);
   XpomMessage* xpomMsg = static_cast<XpomMessage*>(msg);
@@ -99,7 +99,7 @@ test(end_to_end) {
   // Verifies STAT1 (ID 4) message sending and parsing.
   tx.sendStatus1(0xAB);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::STAT1);
   assertEqual(static_cast<Stat1Message*>(msg)->status, 0xAB);
@@ -108,7 +108,7 @@ test(end_to_end) {
   // Verifies STAT2 (ID 8) message sending and parsing.
   tx.sendStatus2(0x11);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::STAT2);
   assertEqual(static_cast<Stat2Message*>(msg)->status, 0x11);
@@ -117,7 +117,7 @@ test(end_to_end) {
   // Verifies STAT4 (ID 3) message sending and parsing.
   tx.sendStatus4(0xCD);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::STAT4);
   assertEqual(static_cast<Stat4Message*>(msg)->status, 0xCD);
@@ -126,7 +126,7 @@ test(end_to_end) {
   // Verifies ERROR (ID 6) message sending and parsing.
   tx.sendError(0xEF);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ERROR);
   assertEqual(static_cast<ErrorMessage*>(msg)->errorCode, 0xEF);
@@ -135,7 +135,7 @@ test(end_to_end) {
   // Verifies TIME (ID 5) message sending and parsing.
   tx.sendTime(1, 42);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::TIME);
   TimeMessage* timeMsg = static_cast<TimeMessage*>(msg);
@@ -146,7 +146,7 @@ test(end_to_end) {
   // Verifies CV_AUTO (ID 12) message sending and parsing.
   tx.sendCvAuto(0x123456, 0xAB);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::CV_AUTO);
   CvAutoMessage* cvAutoMsg = static_cast<CvAutoMessage*>(msg);
@@ -180,7 +180,7 @@ test(long_address_e2e) {
   // The internal alternator in RailcomTx starts with the high part.
   tx.sendAddress(longAddress);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
   assertEqual(static_cast<AdrMessage*>(msg)->address, (longAddress >> 8) & 0x3F);
@@ -189,7 +189,7 @@ test(long_address_e2e) {
   // Send the low part of the address.
   tx.sendAddress(longAddress);
   hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.readMessage();
+  msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_LOW);
   assertEqual(static_cast<AdrMessage*>(msg)->address, longAddress & 0xFF);

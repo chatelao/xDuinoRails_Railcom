@@ -60,14 +60,15 @@ struct XpomMessage : public RailcomMessage {
 };
 
 struct DecoderUniqueMessage : public RailcomMessage {
-    uint16_t manufacturerId;
-    uint32_t productId;
+    uint32_t uniqueId;
 };
 
 struct DecoderStateMessage : public RailcomMessage {
-    uint8_t changeFlags;
-    uint16_t changeCount;
-    uint16_t protocolCaps;
+    uint32_t state;
+};
+
+struct RerailMessage : public RailcomMessage {
+    uint8_t counter;
 };
 
 // --- Constants ---
