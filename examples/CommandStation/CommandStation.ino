@@ -36,7 +36,7 @@ void loop() {
         parseCommand(input);
     }
 
-    RailcomMessage* msg = railcomRx.readMessage();
+    RailcomMessage* msg = railcomRx.read();
     if (msg != nullptr) {
         Serial.print("Received Message! ID: ");
         Serial.println((int)msg->id);
