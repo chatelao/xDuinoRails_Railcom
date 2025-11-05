@@ -1,13 +1,15 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "DecoderStateMachine.h"
+#include "RP2040RailcomHardware.h"
 
 // --- Decoder Configuration ---
 const uint16_t DECODER_ADDRESS = 4098;
 const uint16_t MANUFACTURER_ID = 0x0123;
 const uint32_t PRODUCT_ID = 0x456789AB;
 
-RailcomTx railcomTx(uart0, 0, 1);
+RP2040RailcomHardware railcomHardware(uart0, 0, 2, 1);
+RailcomTx railcomTx(&railcomHardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
 
 void setup() {
