@@ -43,6 +43,7 @@ private:
     LogonState _logonState;
     RailcomDccParser _dccParser;
     unsigned long _last_addressed_time;
+    uint8_t _accessory_state;
 };
 
 #endif // DECODER_STATE_MACHINE_H
