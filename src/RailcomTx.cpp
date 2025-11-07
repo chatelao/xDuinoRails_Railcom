@@ -88,8 +88,9 @@ void RailcomTx::sendStatus2(uint8_t status) {
     sendDatagram(2, RailcomID::STAT2, status, 8);
 }
 
-void RailcomTx::sendTime(uint8_t resolution, uint8_t time) {
-    uint8_t payload = ((resolution & 0x01) << 7) | (time & 0x7F);
+void RailcomTx::sendTime(uint8_t timeValue, bool unit_is_second) {
+    if (timeValue > 127) timeValue = 127;
+    uint8_t payload = (unit_is_second ? 0x80 : 0x00) | timeValue;
     sendDatagram(2, RailcomID::TIME, payload, 8);
 }
 

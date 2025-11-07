@@ -27,7 +27,7 @@ public:
     virtual void sendStatus1(uint8_t status);
     void sendStatus2(uint8_t status);
     void sendStatus4(uint8_t status);
-    void sendTime(uint8_t resolution, uint8_t time);
+    void sendTime(uint8_t timeValue, bool unit_is_second);
     void sendError(uint8_t errorCode);
 
     // --- RCN-218 DCC-A Functions ---

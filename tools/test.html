@@ -46,21 +46,27 @@
         // Test Case 3: ADR_HIGH, address 1234. The high byte is 4.
         assert.equal(decodeRawId([4, 4]), "ID: ADR_HIGH (1)\nPayload: 0x04", "ADR_HIGH, address 1234");
 
-        // Test Case 4: TIME, time 0x12345.
-        assert.equal(decodeRawId([52, 53, 53, 5]), "ID: TIME (5)\nPayload: 0x12_34_5", "TIME, time 0x12345");
+        // Test Case 4: TIME, 12.7 seconds.
+        assert.equal(decodeRawId([21, 63]), "ID: TIME (5)\nPayload: 0x7F (0b0111_1111)", "TIME, 12.7s");
+
+        // Test Case 5: TIME, 127 seconds.
+        assert.equal(decodeRawId([23, 63]), "ID: TIME (5)\nPayload: 0xFF (0b1111_1111)", "TIME, 127s");
       });
       QUnit.test('decodePayload', function(assert) {
-        // Test Case 1: DYN message, Subindex 0 (Speed)
-        assert.equal(decodePayload([28, 0, 0]), "ID: DYN (7)\nValue: 128\nSubindex: 0 (Speed)", "DYN, Speed");
+        // Test Case 1: DYN message, Value 128, Subindex 0 (Speed)
+        assert.equal(decodePayload([30, 0, 0]), "ID: DYN (7)\nValue: 128 (0x80)\nSubindex: 0 (True speed, part 1)\n<a href=\"encoder.html?id=7&payload=2000\" target=\"_blank\">Edit</a>", "DYN, Speed");
 
         // Test Case 2: POM, CV 5, value 128.
-        assert.equal(decodePayload([0, 0, 22, 0]), "ID: POM (0)\nCV: 5 (0x5)\nValue: 128", "POM, CV 5, value 128");
+        assert.equal(decodePayload([0, 0, 22, 0]), "ID: POM (0)\nCV: 5 (0x5)\nValue: 128\n<a href=\"encoder.html?id=0&payload=0580\" target=\"_blank\">Edit</a>", "POM, CV 5, value 128");
 
-        // Test Case 3: ADR_HIGH, address 1234. The high byte is 4.
-        assert.equal(decodePayload([4, 4]), "ID: ADR_HIGH (1)\nAddress part: 4 (0b00000100)", "ADR_HIGH, address 1234");
+        // Test Case 3: ADR_HIGH, address part 4.
+        assert.equal(decodePayload([4, 4]), "ID: ADR_HIGH (1)\nAddress part: 4 (0b00000100)\n<a href=\"encoder.html?id=1&payload=04\" target=\"_blank\">Edit</a>", "ADR_HIGH, address part 4");
 
-        // Test Case 4: TIME, time 0x12345.
-        assert.equal(decodePayload([52, 53, 53, 5]), "ID: TIME (5)\nTime: 74565 ms", "TIME, time 0x12345");
+        // Test Case 4: TIME, 12.7 seconds
+        assert.equal(decodePayload([21, 63]), "ID: TIME (5)\nRestlaufzeit: 12.7 Sekunden\n<a href=\"encoder.html?id=5&payload=7F\" target=\"_blank\">Edit</a>", "TIME, 12.7s");
+
+        // Test Case 5: TIME, 127 seconds
+        assert.equal(decodePayload([23, 63]), "ID: TIME (5)\nRestlaufzeit: 127 Sekunden\n<a href=\"encoder.html?id=5&payload=FF\" target=\"_blank\">Edit</a>", "TIME, 127s");
       });
     });
   </script>

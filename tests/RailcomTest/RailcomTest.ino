@@ -132,15 +132,26 @@ test(end_to_end) {
   assertEqual(static_cast<ErrorMessage*>(msg)->errorCode, 0xEF);
   hardware.clear();
 
-  // Verifies TIME (ID 5) message sending and parsing.
-  tx.sendTime(1, 42);
+  // Verifies TIME (ID 5) message sending and parsing (unit is 0.1s).
+  tx.sendTime(127, false); // 12.7 seconds
   hardware.setRxBuffer(hardware.getQueuedMessages());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::TIME);
-  TimeMessage* timeMsg = static_cast<TimeMessage*>(msg);
-  assertEqual(timeMsg->resolution, 1);
-  assertEqual(timeMsg->time, 42);
+  TimeMessage* timeMsg1 = static_cast<TimeMessage*>(msg);
+  assertEqual(timeMsg1->unit_is_second, false);
+  assertEqual(timeMsg1->timeValue, 127);
+  hardware.clear();
+
+  // Verifies TIME (ID 5) message sending and parsing (unit is 1s).
+  tx.sendTime(42, true); // 42 seconds
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::TIME);
+  TimeMessage* timeMsg2 = static_cast<TimeMessage*>(msg);
+  assertEqual(timeMsg2->unit_is_second, true);
+  assertEqual(timeMsg2->timeValue, 42);
   hardware.clear();
 
   // Verifies CV_AUTO (ID 12) message sending and parsing.
