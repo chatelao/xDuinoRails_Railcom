@@ -86,7 +86,21 @@ const messagePayloads = {
         }))
     ],
     4: [{ name: "Status", bits: 8 }],
-    5: [{ name: "Time", bits: 16, type: 'datepicker' }],
+    5: [
+        {
+            name: "Unit",
+            bits: 1,
+            type: 'select',
+            options: [
+                { value: 0, text: '0.1 seconds' },
+                { value: 1, text: '1 second' }
+            ]
+        },
+        {
+            name: "Time Value",
+            bits: 7
+        }
+    ],
     6: [{ name: "Error code", bits: 8 }],
     7: [{ name: "Value", bits: 8, type: 'slider' }, { name: "Subindex", bits: 6 }],
     8: [{ name: "Sequence", bits: 2 }, { name: "CV", bits: 16 }, { name: "Value", bits: 8 }],
@@ -122,14 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
       fields.forEach(field => {
         const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
         if (input) {
-          if (field.type === 'datepicker') {
-            const randomDate = new Date(+(new Date()) - Math.floor(Math.random() * 10000000000));
-            input.value = randomDate.toISOString().substring(0, 10);
-          } else {
-            const min = parseInt(input.min);
-            const max = parseInt(input.max);
-            input.value = Math.floor(Math.random() * (max - min + 1)) + min;
-          }
+          const min = parseInt(input.min);
+          const max = parseInt(input.max);
+          input.value = Math.floor(Math.random() * (max - min + 1)) + min;
         }
       });
     }
@@ -244,13 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const input = payloadFieldsDiv.querySelector(`[name="${field.name}"]`);
                 if (input) {
-                    switch (field.type) {
-                        case 'datepicker':
-                            value = input.value ? BigInt(new Date(input.value).getHours() * 60 + new Date(input.value).getMinutes()) : 0n;
-                            break;
-                        default:
-                            value = BigInt(input.value || 0);
-                    }
+                    value = BigInt(input.value || 0);
                 }
             }
             if (value !== undefined) {
@@ -320,6 +323,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 interpretation = 'Interpretation for EXT is not yet implemented.';
+            }
+            break;
+        case 5: // TIME
+            {
+                interpretation += `ID: ${idStr} (5)\n`;
+                const unit_is_second = (payload >> 7n) & 1n;
+                const time_value = Number(payload & 0x7Fn);
+                if (unit_is_second === 1n) {
+                    interpretation += `Restlaufzeit: ${time_value} Sekunden`;
+                } else {
+                    interpretation += `Restlaufzeit: ${(time_value / 10.0).toFixed(1)} Sekunden`;
+                }
             }
             break;
         default:

@@ -107,6 +107,16 @@ void RailcomRx::print(Print& stream) {
              stream.printf("  Value: %u\n", msg->value);
              break;
         }
+        case RailcomID::TIME: {
+            TimeMessage* msg = static_cast<TimeMessage*>(_lastMessage);
+            stream.print("  ID: TIME (5)\n");
+            if (msg->unit_is_second) {
+                stream.printf("  Restlaufzeit: %u Sekunden\n", msg->timeValue);
+            } else {
+                stream.printf("  Restlaufzeit: %.1f Sekunden\n", msg->timeValue / 10.0);
+            }
+            break;
+        }
         case RailcomID::DECODER_STATE:
             stream.print("  ID: DECODER_STATE (13)\n");
             stream.printf("  Application-specific state: %lu\n", static_cast<DecoderStateMessage*>(_lastMessage)->state);
@@ -209,8 +219,8 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
         case RailcomID::TIME: {
             TimeMessage* msg = new TimeMessage();
             msg->id = id;
-            msg->resolution = (payload >> 7) & 0x01;
-            msg->time = payload & 0x7F;
+            msg->unit_is_second = (payload >> 7) & 0x01;
+            msg->timeValue = payload & 0x7F;
             return msg;
         }
         case RailcomID::CV_AUTO: {

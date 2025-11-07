@@ -32,7 +32,7 @@ const railcomMessageTypes = {
   2: { lengths: [2] },    // ADR_LOW
   3: { lengths: [2] },    // EXT/STAT4
   4: { lengths: [2] },    // INFO/STAT1
-  5: { lengths: [4] },    // TIME
+  5: { lengths: [2] },    // TIME
   6: { lengths: [2] },    // ERROR
   7: { lengths: [3] },    // DYN
   8: { lengths: [6, 2] }, // XPOM_0/STAT2 (long, short)
@@ -172,7 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
               break;
           case 5: // TIME
               {
-                  interpretation += `Time: ${payload.toString()} ms`;
+                  const unit_is_second = (payload >> 7n) & 1n;
+                  const time_value = Number(payload & 0x7Fn);
+                  if (unit_is_second === 1n) {
+                      interpretation += `Restlaufzeit: ${time_value} Sekunden`;
+                  } else {
+                      interpretation += `Restlaufzeit: ${(time_value / 10.0).toFixed(1)} Sekunden`;
+                  }
               }
               break;
           case 6: // ERROR
