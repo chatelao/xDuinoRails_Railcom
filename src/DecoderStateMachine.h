@@ -43,6 +43,9 @@ private:
     LogonState _logonState;
     RailcomDccParser _dccParser;
     unsigned long _last_addressed_time;
+    // The current state of the accessory decoder's outputs.
+    // This is a member variable to avoid state management bugs with multiple instances.
+    uint8_t _accessory_state;
 };
 
 #endif // DECODER_STATE_MACHINE_H

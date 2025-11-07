@@ -164,6 +164,7 @@ void setup() {
   run_test(end_to_end);
   run_test(long_address_e2e);
   run_test(short_address_e2e);
+  run_test(decoder_state_machine_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -194,6 +195,28 @@ test(long_address_e2e) {
   assertEqual(msg->id, RailcomID::ADR_LOW);
   assertEqual(static_cast<AdrMessage*>(msg)->address, longAddress & 0xFF);
   hardware.clear();
+}
+
+#include "DecoderStateMachine.h"
+
+// Verifies the DecoderStateMachine's response to a POM read command.
+test(decoder_state_machine_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100);
+
+  // Simulate a DCC POM read command for CV 1
+  uint8_t dcc_data[] = {0, 100, 0b11100100, 1, 0}; // Address 100, Read CV 1
+  DCCMessage msg(dcc_data, 5);
+  sm.handleDccPacket(msg);
+
+  // Verify that a POM response with the dummy value 42 is sent
+  RailcomRx rx(&hardware);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  RailcomMessage* railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::POM);
+  assertEqual(static_cast<PomMessage*>(railcomMsg)->cvValue, 42);
 }
 
 void loop() {
