@@ -7,12 +7,13 @@ DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type,
 }
 
 void DecoderStateMachine::handleDccPacket(const DCCMessage& msg) {
-    _dccParser.parse(msg);
+    bool response_sent = false;
+    _dccParser.parse(msg, &response_sent);
 
     // Also send address as a default response for locomotives
     const uint8_t* data = msg.getData();
     size_t len = msg.getLength();
-    if (_type == DecoderType::LOCOMOTIVE && len >= 2 && ((data[0] << 8) | data[1]) == _address) {
+    if (!response_sent && _type == DecoderType::LOCOMOTIVE && len >= 2 && ((data[0] << 8) | data[1]) == _address) {
         _txManager.sendAddress(_address);
     }
 }
@@ -49,6 +50,9 @@ void DecoderStateMachine::setupCallbacks() {
     };
 
     // RCN-217 Callbacks
+
+    // Handles a POM Read CV command by sending a POM response with the CV value.
+    // See RCN-217 Section 5.1.1
     _dccParser.onPomReadCv = [this](uint16_t cv, uint16_t address) {
         if (address == _address) {
             uint8_t value = 42; // Dummy value for the requested CV
@@ -56,6 +60,8 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
+    // Handles a POM Write CV command by sending a POM response with the new CV value.
+    // See RCN-217 Section 5.1.2
     _dccParser.onPomWriteCv = [this](uint16_t cv, uint8_t value, uint16_t address) {
         if (address == _address) {
             // Here you would typically write the CV value to memory
@@ -63,6 +69,8 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
+    // Handles a POM Write Bit command by sending a POM response with the new CV value.
+    // See RCN-217 Section 5.1.3
     _dccParser.onPomWriteBit = [this](uint16_t cv, uint8_t bit, uint8_t value, uint16_t address) {
         if (address == _address) {
             // Here you would typically write the CV bit to memory
@@ -76,6 +84,8 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
+    // Handles an accessory command by updating the accessory state and sending a status response.
+    // See RCN-217 Section 6.3 and 6.4
     _dccParser.onAccessory = [this](uint16_t address, bool activate, uint8_t output) {
         if (address == _address) {
             if (activate) {
@@ -92,8 +102,10 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    _dccParser.onFunction = [this](uint8_t function, bool state) {
-         if (/* check if message is for me */ 1) {
+    // Handles a function command by sending an ACK.
+    // See RCN-212 Section 2.3.5
+    _dccParser.onFunction = [this](uint16_t address, uint8_t function, bool state) {
+         if (address == _address) {
             // Here you would typically handle the function command
             _txManager.sendAck();
         }
