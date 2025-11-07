@@ -33,7 +33,7 @@ RailCom's bidirectional communication opens up many possibilities for realistic 
 2.  **On-the-Main Programming:** Read and write decoder CVs on the main track without needing a separate programming track, making it much faster to fine-tune performance.
 3.  **Accessory Feedback:** Turnout decoders can report their actual position back, ensuring your control panel is always synchronized with the physical layout.
 
-For a more comprehensive list of what you can do with RailCom, see the **[full Use Cases documentation](docs/UseCases.md)**.
+For a more comprehensive list of what you can do with RailCom, see the **[full Use Cases documentation](docs/USE_CASES.md)**.
 
 ## Neopixel Example
 
@@ -48,14 +48,14 @@ The `LocomotiveDecoderNeopixel` example requires the [Adafruit NeoPixel](https:/
 
 To get started, please see the detailed "howto" guides for wiring and minimal software examples:
 
--   **[Howto: RailCom Decoder (Transmitter)](docs/HowtoTx.md)**
--   **[Howto: RailCom Detector (Receiver)](docs/HowtoRx.md)**
+-   **[Howto: RailCom Decoder (Transmitter)](docs/HOWTO_TX.md)**
+-   **[Howto: RailCom Detector (Receiver)](docs/HOWTO_RX.md)**
 
 ## API Reference
-For a detailed API reference, please see the **[API Documentation](docs/API_Reference.md)**.
+For a detailed API reference, please see the **[API Documentation](docs/API_REFERENCE.md)**.
 
 ## Testing
-For a detailed overview of the testing strategy, please see the **[Testing Documentation](docs/Testing.md)**.
+For a detailed overview of the testing strategy, please see the **[Testing Documentation](docs/TESTING.md)**.
 
 ## Tools
 
