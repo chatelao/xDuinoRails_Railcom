@@ -1,0 +1,1 @@
+Vor der Implementierung neuer Funktionalitäten ist der aktuelle Stand in `docs/RCN-217-IMPLEMENTATION-REPORT.md` zu prüfen. Nach Abschluss einer Implementierungsphase muss dieses Dokument aktualisiert werden, um den neuen Status widerzuspiegeln.
