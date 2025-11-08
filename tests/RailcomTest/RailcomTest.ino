@@ -176,8 +176,30 @@ void setup() {
   run_test(long_address_e2e);
   run_test(short_address_e2e);
   run_test(decoder_state_machine_e2e);
+  run_test(srq_e2e);
 
   Serial.println("All tests passed!");
+}
+
+// Verifies the end-to-end transmission and reception of a Service Request.
+test(srq_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t accessoryAddress = 1234;
+  bool isExtended = true;
+
+  tx.sendServiceRequest(accessoryAddress, isExtended);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::SRQ);
+  SrqMessage* srqMsg = static_cast<SrqMessage*>(msg);
+  assertEqual(srqMsg->accessoryAddress, accessoryAddress);
+  assertEqual(srqMsg->isExtended, isExtended);
+  hardware.clear();
 }
 
 // Verifies the end-to-end transmission and reception of a long address.

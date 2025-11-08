@@ -72,8 +72,12 @@ void RailcomTx::handleRerailingSearch(uint16_t address, uint32_t secondsSincePow
 }
 
 void RailcomTx::sendServiceRequest(uint16_t accessoryAddress, bool isExtended) {
-    if (accessoryAddress > MAX_ACCESSORY_ADDRESS) return;
-    _hardware->queue_message(1, RailcomEncoding::encodeServiceRequest(accessoryAddress, isExtended));
+    // RCN-217 specifies SRQ (ID 4) is sent on Channel 2.
+    // The total datagram length must be a multiple of 6. 4 (ID) + 12 (Payload) = 16.
+    // We must pad to 18 bits, which means the payload field becomes 14 bits wide.
+    if (accessoryAddress > 2047) return; // Address must be 11 bits max
+    uint16_t payload = (accessoryAddress & 0x7FF) | (isExtended ? 0x800 : 0x000);
+    sendDatagram(2, RailcomID::SRQ, payload, 14);
 }
 
 void RailcomTx::sendStatus1(uint8_t status) {

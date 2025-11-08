@@ -100,6 +100,13 @@ void RailcomRx::print(Print& stream) {
              }
              break;
         }
+        case RailcomID::SRQ: {
+            SrqMessage* msg = static_cast<SrqMessage*>(_lastMessage);
+            stream.print("  ID: SRQ (4)\n");
+            stream.printf("  Accessory Address: %u\n", msg->accessoryAddress);
+            stream.printf("  Is Extended: %s\n", msg->isExtended ? "Yes" : "No");
+            break;
+        }
         case RailcomID::DYN: {
              DynMessage* msg = static_cast<DynMessage*>(_lastMessage);
              stream.print("  ID: DYN (7)\n");
@@ -198,11 +205,20 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 return msg;
             }
         }
-        case RailcomID::STAT1: {
-            Stat1Message* msg = new Stat1Message();
-            msg->id = id;
-            msg->status = payload;
-            return msg;
+        case RailcomID::STAT1: { // Also handles SRQ and INFO
+            if (bitCount == 12) { // 4 ID bits + 8 payload bits
+                Stat1Message* msg = new Stat1Message();
+                msg->id = id;
+                msg->status = payload;
+                return msg;
+            } else if (bitCount == 18) { // 4 ID bits + 14 payload bits (SRQ uses 12)
+                SrqMessage* msg = new SrqMessage();
+                msg->id = RailcomID::SRQ;
+                msg->accessoryAddress = payload & 0x7FF;
+                msg->isExtended = (payload >> 11) & 0x01;
+                return msg;
+            }
+            return nullptr; // Unknown length for this ID
         }
         case RailcomID::STAT4: {
             Stat4Message* msg = new Stat4Message();
