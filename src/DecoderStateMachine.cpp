@@ -1,19 +1,35 @@
 #include "DecoderStateMachine.h"
 
-DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint16_t manufacturerId, uint32_t productId)
-    : _txManager(txManager), _type(type), _address(address),
-      _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE), _accessory_state(0) {
+#include <Arduino.h>
+
+DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint8_t cv28, uint8_t cv29, uint16_t manufacturerId, uint32_t productId)
+    : _txManager(txManager), _type(type), _address(address), _cv28(cv28), _cv29(cv29),
+      _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE), _accessory_state(0), _channel1_broadcast_enabled(true) {
     setupCallbacks();
 }
 
 void DecoderStateMachine::handleDccPacket(const DCCMessage& msg) {
+    // According to NMRA S-9.2.2, CV29, Bit 3 enables/disables RailCom.
+    // If RailCom is not enabled, do not process any packets.
+    if ((_cv29 & 0b00001000) == 0) {
+        return;
+    }
+
     bool response_sent = false;
     _dccParser.parse(msg, &response_sent);
 
     // Also send address as a default response for locomotives
     const uint8_t* data = msg.getData();
     size_t len = msg.getLength();
-    if (!response_sent && _type == DecoderType::LOCOMOTIVE && len >= 2 && ((data[0] << 8) | data[1]) == _address) {
+    bool is_addressed_to_me = (len >= 2 && ((data[0] << 8) | data[1]) == _address);
+
+    if (is_addressed_to_me) {
+        // Once we are addressed directly, we should stop broadcasting on Ch1
+        // to reduce channel congestion.
+        _channel1_broadcast_enabled = false;
+    }
+
+    if (!response_sent && _type == DecoderType::LOCOMOTIVE && _channel1_broadcast_enabled) {
         _txManager.sendAddress(_address);
     }
 }

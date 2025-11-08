@@ -24,7 +24,7 @@ enum class LogonState {
 
 class DecoderStateMachine {
 public:
-    DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint16_t manufacturerId = 0, uint32_t productId = 0);
+    DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint8_t cv28, uint8_t cv29, uint16_t manufacturerId = 0, uint32_t productId = 0);
 
     // This is the main entry point. It analyzes the DCC packet and queues
     // the appropriate RailCom response.
@@ -36,6 +36,8 @@ private:
     RailcomTx& _txManager;
     DecoderType _type;
     uint16_t _address;
+    uint8_t _cv28;
+    uint8_t _cv29;
     uint16_t _manufacturerId;
     uint32_t _productId;
 
@@ -46,6 +48,8 @@ private:
     // The current state of the accessory decoder's outputs.
     // This is a member variable to avoid state management bugs with multiple instances.
     uint8_t _accessory_state;
+    // Flag to control the address broadcast on Channel 1.
+    bool _channel1_broadcast_enabled;
 };
 
 #endif // DECODER_STATE_MACHINE_H

@@ -5,11 +5,30 @@
 #include "DecoderStateMachine.h"
 
 #define DCC_PIN 2
+
+// --- Configuration Variables ---
+// These would typically be stored in EEPROM or flash in a real decoder.
+
 const uint16_t LOCOMOTIVE_ADDRESS = 4098;
+
+// CV28: RailCom Configuration
+// Bit 0: Channel 1 Enable (1=Enabled)
+// Bit 1: Channel 2 Enable (1=Enabled)
+// Note: This library currently uses Channel 1 for address broadcast and
+// Channel 2 for all other responses.
+const uint8_t CV28 = 0b00000011; // Enable both channels
+
+// CV29: Decoder Configuration
+// Bit 3: RailCom Enable (1=Enabled)
+// For a full list of bits, see NMRA S-9.2.2.
+// To disable all RailCom transmissions from this decoder, set this value to
+// e.g., 0b00000010 (disable bit 3).
+const uint8_t CV29 = 0b00001010; // Enable RailCom, 28/128 speed steps, long address
 
 RP2040RailcomHardware hardware(uart0, 0, 1, 3); // RX pin 3 is a placeholder
 RailcomTx railcomTx(&hardware);
-DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS);
+// Initialize the state machine with the decoder's address and CV configuration.
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, CV28, CV29);
 NmraDcc Dcc;
 
 void notifyDccSpeed(uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t Speed, DCC_DIRECTION Dir, DCC_SPEED_STEPS SpeedSteps) {

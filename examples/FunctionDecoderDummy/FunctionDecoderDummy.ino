@@ -4,11 +4,13 @@
 #include "DecoderStateMachine.h"
 
 const uint16_t DECODER_ADDRESS = 1234;
+const uint8_t CV28 = 0b00000011; // Enable both channels
+const uint8_t CV29 = 0b00001010; // Enable RailCom
 
 RP2040RailcomHardware hardware(uart0, 0, 1, 2); // RX pin 2 is a placeholder
 RailcomTx railcomTx(&hardware);
 // Note: We'll re-use the LOCOMOTIVE type for the function decoder
-DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, CV28, CV29);
 
 unsigned long lastDccPacketTime = 0;
 

@@ -177,6 +177,8 @@ void setup() {
   run_test(short_address_e2e);
   run_test(service_request_e2e);
   run_test(decoder_state_machine_e2e);
+  run_test(cv_config_disables_railcom);
+  run_test(dynamic_channel1_management);
   run_test(decoder_unique_e2e);
   run_test(decoder_state_e2e);
   run_test(ack_nack_e2e);
@@ -220,7 +222,8 @@ test(long_address_e2e) {
 test(decoder_state_machine_e2e) {
   MockRailcomHardware hardware;
   RailcomTx tx(&hardware);
-  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100);
+  // CV28=enable all, CV29=enable railcom, long addr, 28/128 steps
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00001010);
 
   // Simulate a DCC POM read command for CV 1
   uint8_t dcc_data[] = {0, 100, 0b11100100, 1, 0}; // Address 100, Read CV 1
@@ -234,6 +237,50 @@ test(decoder_state_machine_e2e) {
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::POM);
   assertEqual(static_cast<PomMessage*>(railcomMsg)->cvValue, 42);
+}
+
+// Verifies that no RailCom messages are sent when disabled via CV29.
+test(cv_config_disables_railcom) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  // CV29 has bit 3 (RailCom enable) set to 0.
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00000010);
+
+  // Simulate a DCC packet
+  uint8_t dcc_data[] = {0, 100, 0b01100000, 0};
+  DCCMessage msg(dcc_data, 4);
+  sm.handleDccPacket(msg);
+
+  // Verify that NO message was sent
+  assertTrue(hardware.getQueuedMessages().empty());
+}
+
+// Verifies that the address broadcast on Ch1 stops after the decoder is addressed.
+test(dynamic_channel1_management) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  // RailCom is enabled.
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00001010);
+
+  // 1. Simulate a DCC packet for a DIFFERENT locomotive.
+  // We expect an address broadcast because the channel is open.
+  uint8_t other_loco_data[] = {0, 101, 0b01100000, 0};
+  DCCMessage other_loco_msg(other_loco_data, 4);
+  sm.handleDccPacket(other_loco_msg);
+  assertTrue(hardware.getQueuedMessages().count(1)); // Should broadcast address
+  hardware.clear();
+
+  // 2. Simulate a DCC packet for THIS locomotive.
+  // This should disable future broadcasts.
+  uint8_t my_loco_data[] = {0, 100, 0b01100000, 0};
+  DCCMessage my_loco_msg(my_loco_data, 4);
+  sm.handleDccPacket(my_loco_msg);
+  hardware.clear(); // Clear any messages sent in response to this packet
+
+  // 3. Simulate another packet for the OTHER locomotive.
+  // We expect NO broadcast this time.
+  sm.handleDccPacket(other_loco_msg);
+  assertTrue(hardware.getQueuedMessages().empty());
 }
 
 void loop() {
