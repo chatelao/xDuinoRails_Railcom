@@ -55,8 +55,10 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino` (`info1_cycle_e2e`).
 
 *   **`Aktuelle Fahrinformation` / Current Driving Info (ID 4)**
-    *   **Status: Not Implemented**
-    *   **Details:** The 36-bit message for detailed driving information is not implemented. The message ID `4` is used for `STAT1`.
+    *   **Status: Implemented**
+    *   **Tx:** `RailcomTx::sendInfo` sends a 32-bit payload containing speed, motor load, and status flags.
+    *   **Rx:** `RailcomRx::parseMessage` distinguishes INFO from STAT1 by message length and decoder context, then parses the 32-bit payload.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/info_message_e2e`.
 
 *   **`BLOCK` (ID 13)**
     *   **Status: Not Implemented**
@@ -125,17 +127,3 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Details:** The library provides functions to send RailCom messages *in response* to events, but it does not include the DCC parsing logic to recognize and react to the specific extended function commands (like `XF1` for location request or `XF2` for rerailing search) that trigger these responses. This logic is left to the user's application/sketch.
 
 ---
-
-## Proposal for Next Implementation
-
-Based on the analysis, the next recommended feature for implementation is the **`EXT` message (ID 3)** for transmitting location information.
-
-### Justification:
-1.  **Fills a Key Gap:** Location reporting is a core RailCom use case (see `UseCases.md`, #4) that is currently unsupported on the transmission (Tx) side.
-2.  **Enables Paired Implementation:** The receiver (Rx) can already distinguish `EXT` from `STAT4` by message length. This task involves implementing the Tx function (`sendEXT`), adding a corresponding `ExtMessage` struct, and completing the Rx parsing logic—perfectly aligning with the goal of paired, symmetrical implementation.
-3.  **Clear Specification:** The 14-bit payload for `EXT` is clearly defined in RCN-217, allowing for a precise and specification-compliant implementation of the sender, as requested.
-4.  **Manageable Scope:** The required changes are well-defined:
-    *   Add `ExtMessage` to `Railcom.h`.
-    *   Add `sendExt(...)` to `RailcomTx.h` and `.cpp`.
-    *   Complete the parsing logic for `EXT` in `RailcomRx.cpp`.
-    *   Add a new end-to-end test case to `RailcomTest.ino`.

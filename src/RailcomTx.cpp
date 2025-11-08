@@ -31,6 +31,14 @@ void RailcomTx::sendPomResponse(uint8_t cvValue) {
     sendDatagram(2, RailcomID::POM, cvValue, 8);
 }
 
+void RailcomTx::sendInfo(uint16_t speed, uint8_t motorLoad, uint8_t statusFlags) {
+    uint32_t payload = 0;
+    payload |= (uint32_t)speed << 16;
+    payload |= (uint32_t)motorLoad << 8;
+    payload |= (uint32_t)statusFlags;
+    sendDatagram(2, RailcomID::INFO, payload, 32);
+}
+
 void RailcomTx::sendExt(uint8_t type, uint8_t position) {
     // Per RCN-217, the type for EXT message is in the range 0-7.
     // The payload format is 00 TTTT PPPP PPPP, where TTTT must be <= 0111.

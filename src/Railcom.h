@@ -63,6 +63,14 @@ struct Info1Message : public RailcomMessage {
     bool is_in_consist;
     bool request_addressing;
 };
+
+// A "Driving Information" message (ID 4) for mobile decoders
+struct InfoMessage : public RailcomMessage {
+    uint16_t speed;
+    uint8_t motorLoad;
+    uint8_t statusFlags;
+};
+
 // A "Time" message (ID 5)
 struct TimeMessage : public RailcomMessage {
     uint8_t timeValue;
