@@ -8,35 +8,49 @@ This document details the implementation status of features from the RCN-217 spe
 
 *   **`ADR_HIGH` / `ADR_LOW` (IDs 1 & 2) - Address Reporting**
     *   **Status: Implemented**
-    *   **Details:** The library can correctly send and parse both high and low address parts for short and long addresses. This is demonstrated in `tests/RailcomTest/RailcomTest.ino` and used in the `examples/LocomotiveDecoderNmra/LocomotiveDecoderNmra.ino` sketch via the `DecoderStateMachine`.
+    *   **Tx:** `RailcomTx::sendAddress` handles both long and short addresses correctly, alternating between high and low parts.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses both message types. The `print()` function combines them to show the effective address.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino` (`short_address_e2e`, `long_address_e2e`).
 
 *   **`POM` (ID 0) - Programming on the Main**
     *   **Status: Implemented**
-    *   **Details:** The library supports sending and receiving POM responses for CV values. This is tested end-to-end in `tests/RailcomTest/RailcomTest.ino` and used in the locomotive example.
+    *   **Tx:** `RailcomTx::sendPomResponse` sends the 8-bit CV value.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the response.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`DYN` (ID 7) - Dynamic Data**
     *   **Status: Implemented**
-    *   **Details:** The library can send and parse `DYN` messages containing a sub-index and value. This is verified in `tests/RailcomTest/RailcomTest.ino`. However, the specific meanings of most sub-indexes (e.g., speed, load) are not implemented in the examples.
+    *   **Tx:** `RailcomTx::sendDynamicData` sends a message with a sub-index and value.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the message.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`XPOM` (IDs 8, 9, 10, 11) - Extended Programming on the Main**
     *   **Status: Implemented**
-    *   **Details:** The library can send and parse all four sequence-numbered `XPOM` messages, which carry four CV values. This is verified in `tests/RailcomTest/RailcomTest.ino`.
+    *   **Tx:** `RailcomTx::sendXpomResponse` sends a 32-bit payload with four CV values.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses all four sequence-numbered `XPOM` messages.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`CV-AUTO` (ID 12) - Automatic CV Transmission**
     *   **Status: Implemented**
-    *   **Details:** The library can send and parse `CV-AUTO` messages containing a 24-bit CV address and an 8-bit value. This is verified in `tests/RailcomTest/RailcomTest.ino`.
+    *   **Tx:** `RailcomTx::sendCvAuto` sends a 24-bit CV address and 8-bit value.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the message.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`Aufgleissuche` / Rerailing Search (ID 14)**
-    *   **Status: Partially Implemented**
-    *   **Details:** The `RailcomTx` class has a `handleRerailingSearch` method to send the required `ADR_HIGH`, `ADR_LOW`, and `RERAIL` (ID 14) messages. However, no example or test sketch actually calls this function, and there is no logic to handle the triggering broadcast command (`XF2 aus`).
-
-*   **`INFO1` (ID 3) - Additional Info for Channel 1**
-    *   **Status: Not Implemented**
-    *   **Details:** There is no definition, sender function, or parsing logic for the `INFO1` message, which is used to report direction and state on Channel 1.
+    *   **Status: Implemented**
+    *   **Tx:** `RailcomTx::handleRerailingSearch` sends the required sequence of `ADR_HIGH`, `ADR_LOW`, and `RERAIL` messages.
+    *   **Rx:** `RailcomRx::parseMessage` can parse all individual messages of the sequence.
+    *   **Test:** The full sequence is tested end-to-end in `tests/RailcomTest/rerailing_search_e2e`. The library does not implement the DCC parsing to trigger this automatically from a broadcast command.
 
 *   **`EXT` (ID 3) - Location Information**
+    *   **Status: Partially Implemented (Rx Only)**
+    *   **Tx:** There is no sender function (`send...`) for the `EXT` message.
+    *   **Rx:** `RailcomRx::parseMessage` can differentiate `EXT` from `STAT4` based on its 18-bit datagram length. However, the 14-bit payload is not further interpreted.
+    *   **Test:** No end-to-end test exists.
+
+*   **`INFO1` (ID 3, alias for EXT) / `INFO` (ID 4) - Additional Info**
     *   **Status: Not Implemented**
-    *   **Details:** The library does not implement the `EXT` message for transmitting location information. The message ID `3` is used for `STAT4` in the stationary decoder context.
+    *   **Details:** There is no definition, sender function, or parsing logic for these mobile-decoder-specific info messages. Message ID 3 is parsed as `STAT4` or `EXT`, and ID 4 is parsed as `STAT1`.
 
 *   **`Aktuelle Fahrinformation` / Current Driving Info (ID 4)**
     *   **Status: Not Implemented**
@@ -44,52 +58,82 @@ This document details the implementation status of features from the RCN-217 spe
 
 *   **`BLOCK` (ID 13)**
     *   **Status: Not Implemented**
-    *   **Details:** There is no support for this message type. (Note: The library uses ID 13 for `DECODER_STATE` as defined in the RCN-218 specification).
+    *   **Details:** There is no support for this RCN-217 message type. The library uses ID 13 for `DECODER_STATE` as defined in the RCN-218 specification.
 
 ## Stationary Decoder Features (STAT)
 
 *   **`STAT1` (ID 4) - Status Report Part 1**
     *   **Status: Implemented**
-    *   **Details:** The library can send and parse `STAT1` messages. This is tested in `tests/RailcomTest/RailcomTest.ino` and used in the `examples/AccessoryDecoderNmra/AccessoryDecoderNmra.ino` sketch.
+    *   **Tx:** `RailcomTx::sendStatus1` sends the status byte.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the message.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`STAT4` (ID 3) - Status of 4 Turnout Pairs**
     *   **Status: Implemented**
-    *   **Details:** The library can send and parse `STAT4` messages. This is also tested and used in the accessory decoder example.
+    *   **Tx:** `RailcomTx::sendStatus4` sends the status byte.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the message and can distinguish it from `EXT`.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`FEHLER` / `ERROR` (ID 6)**
     *   **Status: Implemented**
-    *   **Details:** The library supports sending and parsing the `ERROR` message. It is verified in the test suite.
+    *   **Tx:** `RailcomTx::sendError` sends the error code.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the message.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`ZEIT` / `TIME` (ID 5)**
     *   **Status: Implemented**
-    *   **Details:** The library supports sending and parsing the `TIME` message for reporting estimated switching time. It is verified in the test suite.
+    *   **Tx:** `RailcomTx::sendTime` sends the time value and unit.
+    *   **Rx:** `RailcomRx::parseMessage` correctly parses the message.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 *   **`STAT2` (ID 8)**
     *   **Status: Implemented**
-    *   **Details:** The library can correctly distinguish and parse the short `STAT2` message from the long `XPOM` message, both of which use ID 8. This is verified in the test suite.
+    *   **Tx:** `RailcomTx::sendStatus2` sends the status byte.
+    *   **Rx:** `RailcomRx::parseMessage` correctly distinguishes and parses the short `STAT2` message from the long `XPOM` message.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
-*   **`SRQ` - Service Request (Channel 1)**
-    *   **Status: Partially Implemented**
-    *   **Details:** The `RailcomTx` class has a `sendServiceRequest` function, and the encoding logic is present. However, none of the example sketches demonstrate its use, and there is no logic to handle the required NOP packets or search algorithms for multiple SRQs.
+*   **`SRQ` - Service Request (ID 14)**
+    *   **Status: Implemented**
+    *   **Tx:** `RailcomTx::sendServiceRequest` correctly encodes the 11-bit address and extended flag.
+    *   **Rx:** `RailcomRx::parseMessage` correctly distinguishes `SRQ` from `RERAIL` based on length and parses the payload.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/service_request_e2e`.
 
 ## Protocol-Level Features
 
 *   **4-of-8 Data Encoding**
     *   **Status: Implemented**
-    *   **Details:** The `RailcomEncoding.cpp` file contains the complete encoding and decoding lookup tables and functions, which are used by all message types.
+    *   **Details:** `RailcomEncoding.cpp` contains the complete encoding and decoding logic used by all message types.
 
 *   **Datagram Packet Structure**
     *   **Status: Implemented**
-    *   **Details:** The library correctly constructs datagrams by combining a 4-bit message ID with a variable-length payload, as shown in `RailcomEncoding::encodeDatagram`.
+    *   **Details:** The library correctly constructs and parses datagrams with a 4-bit ID and payload.
 
 *   **CV-Based Configuration (CV28/CV29)**
-    *   **Status: Not Implemented**
-    *   **Details:** The library does not contain logic to read CVs like CV28 to dynamically enable or disable RailCom channels or features. The behavior is currently hardcoded.
+    *   **Status: Implemented**
+    *   **Details:** The `DecoderStateMachine` uses CV29 to enable or disable RailCom transmissions.
+    *   **Test:** Verified in `tests/RailcomTest/cv_config_disables_railcom`.
 
 *   **Dynamic Channel 1 Usage**
-    *   **Status: Not Implemented**
-    *   **Details:** The logic for a decoder to automatically stop sending its address on Channel 1 after being addressed several times (to reduce channel collisions) is not implemented.
+    *   **Status: Implemented**
+    *   **Details:** The `DecoderStateMachine` stops broadcasting its address on Channel 1 after being directly addressed.
+    *   **Test:** Verified in `tests/RailcomTest/dynamic_channel1_management`.
 
 *   **Handling of Specific DCC Commands (XF1, XF2, etc.)**
     *   **Status: Not Implemented**
-    *   **Details:** The library provides the functions to send RailCom messages *in response* to events, but it does not include the DCC parsing logic to recognize and react to the specific extended function commands (like `XF1` for location request or `XF2` for rerailing search) that trigger these responses.
+    *   **Details:** The library provides functions to send RailCom messages *in response* to events, but it does not include the DCC parsing logic to recognize and react to the specific extended function commands (like `XF1` for location request or `XF2` for rerailing search) that trigger these responses. This logic is left to the user's application/sketch.
+
+---
+
+## Proposal for Next Implementation
+
+Based on the analysis, the next recommended feature for implementation is the **`EXT` message (ID 3)** for transmitting location information.
+
+### Justification:
+1.  **Fills a Key Gap:** Location reporting is a core RailCom use case (see `UseCases.md`, #4) that is currently unsupported on the transmission (Tx) side.
+2.  **Enables Paired Implementation:** The receiver (Rx) can already distinguish `EXT` from `STAT4` by message length. This task involves implementing the Tx function (`sendEXT`), adding a corresponding `ExtMessage` struct, and completing the Rx parsing logic—perfectly aligning with the goal of paired, symmetrical implementation.
+3.  **Clear Specification:** The 14-bit payload for `EXT` is clearly defined in RCN-217, allowing for a precise and specification-compliant implementation of the sender, as requested.
+4.  **Manageable Scope:** The required changes are well-defined:
+    *   Add `ExtMessage` to `Railcom.h`.
+    *   Add `sendExt(...)` to `RailcomTx.h` and `.cpp`.
+    *   Complete the parsing logic for `EXT` in `RailcomRx.cpp`.
+    *   Add a new end-to-end test case to `RailcomTest.ino`.
