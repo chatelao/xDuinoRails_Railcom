@@ -81,25 +81,31 @@ void RailcomRx::print(Print& stream) {
             }
             break;
         }
-        case RailcomID::STAT4: {
-             stream.print("  ID: STAT4 (3)\n");
-             uint8_t status = static_cast<Stat4Message*>(_lastMessage)->status;
-             stream.println("  Turnout Status:");
-             for (int i = 3; i >= 0; i--) {
-                 const int turnoutNum = i + 1;
-                 const bool greenBit = (status >> (i * 2 + 1)) & 1;
-                 const bool redBit = (status >> (i * 2)) & 1;
-                 stream.printf("    Pair %d: ", turnoutNum);
-                 if (greenBit) {
-                     stream.println("Green (straight/right/go)");
-                 } else if (redBit) {
-                     stream.println("Red (turn/left/stop)");
-                 } else {
-                     stream.println("Off");
-                 }
-             }
-             break;
-        }
+        case RailcomID::EXT: // Also covers STAT4
+            if (_lastRawBytes.size() * 6 - 4 == 14) { // EXT message has 14 payload bits -> 18 total bits -> 3 bytes
+                ExtMessage* msg = static_cast<ExtMessage*>(_lastMessage);
+                stream.print("  ID: EXT (3)\n");
+                stream.printf("  Type: %u\n", msg->type);
+                stream.printf("  Position: %u\n", msg->position);
+            } else { // STAT4 message has 8 payload bits -> 12 total bits -> 2 bytes
+                stream.print("  ID: STAT4 (3)\n");
+                uint8_t status = static_cast<Stat4Message*>(_lastMessage)->status;
+                stream.println("  Turnout Status:");
+                for (int i = 3; i >= 0; i--) {
+                    const int turnoutNum = i + 1;
+                    const bool greenBit = (status >> (i * 2 + 1)) & 1;
+                    const bool redBit = (status >> (i * 2)) & 1;
+                    stream.printf("    Pair %d: ", turnoutNum);
+                    if (greenBit) {
+                        stream.println("Green (straight/right/go)");
+                    } else if (redBit) {
+                        stream.println("Red (turn/left/stop)");
+                    } else {
+                        stream.println("Off");
+                    }
+                }
+            }
+            break;
         case RailcomID::DYN: {
              DynMessage* msg = static_cast<DynMessage*>(_lastMessage);
              stream.print("  ID: DYN (7)\n");
@@ -211,11 +217,22 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             msg->status = payload;
             return msg;
         }
-        case RailcomID::STAT4: {
-            Stat4Message* msg = new Stat4Message();
-            msg->id = id;
-            msg->status = payload;
-            return msg;
+        case RailcomID::EXT: { // Also STAT4
+            if (bitCount == 18) { // EXT Message
+                ExtMessage* msg = new ExtMessage();
+                msg->id = RailcomID::EXT;
+                uint8_t type = (payload >> 8) & 0x0F;
+                // The type must be in the range 0-7.
+                if (type > 7) return nullptr;
+                msg->type = type;
+                msg->position = payload & 0xFF;
+                return msg;
+            } else { // STAT4 Message
+                Stat4Message* msg = new Stat4Message();
+                msg->id = RailcomID::STAT4;
+                msg->status = payload;
+                return msg;
+            }
         }
         case RailcomID::ERROR: {
             ErrorMessage* msg = new ErrorMessage();

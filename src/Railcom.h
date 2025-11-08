@@ -48,6 +48,7 @@ struct RailcomMessage { RailcomID id; };
 struct PomMessage : public RailcomMessage { uint8_t cvValue; };
 struct AdrMessage : public RailcomMessage { uint16_t address; };
 struct DynMessage : public RailcomMessage { uint8_t subIndex; uint8_t value; };
+struct ExtMessage : public RailcomMessage { uint8_t type; uint8_t position; };
 // A "Time" message (ID 5)
 struct TimeMessage : public RailcomMessage {
     uint8_t timeValue;

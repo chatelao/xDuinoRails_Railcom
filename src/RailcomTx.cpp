@@ -31,6 +31,13 @@ void RailcomTx::sendPomResponse(uint8_t cvValue) {
     sendDatagram(2, RailcomID::POM, cvValue, 8);
 }
 
+void RailcomTx::sendExt(uint8_t type, uint8_t position) {
+    // Per RCN-217, the type for EXT message is in the range 0-7.
+    // The payload format is 00 TTTT PPPP PPPP, where TTTT must be <= 0111.
+    uint16_t payload = ((type & 0x07) << 8) | position;
+    sendDatagram(2, RailcomID::EXT, payload, 14);
+}
+
 void RailcomTx::sendAddress(uint16_t address) {
     if (address >= MIN_SHORT_ADDRESS && address <= MAX_SHORT_ADDRESS) { // Short
         if (_long_address_alternator) { // Send ADR_HIGH with 0 payload

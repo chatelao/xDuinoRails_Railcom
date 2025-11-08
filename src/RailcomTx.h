@@ -16,6 +16,7 @@ public:
 
     // --- Vehicle Decoder (MOB) Functions ---
     void sendPomResponse(uint8_t cvValue);
+    void sendExt(uint8_t type, uint8_t position);
     virtual void sendAddress(uint16_t address);
     void sendDynamicData(uint8_t subIndex, uint8_t value);
     void sendCvAuto(uint32_t cvAddress, uint8_t cvValue);
