@@ -43,14 +43,16 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Test:** The full sequence is tested end-to-end in `tests/RailcomTest/rerailing_search_e2e`. The library does not implement the DCC parsing to trigger this automatically from a broadcast command.
 
 *   **`EXT` (ID 3) - Location Information**
-    *   **Status: Partially Implemented (Rx Only)**
-    *   **Tx:** There is no sender function (`send...`) for the `EXT` message.
-    *   **Rx:** `RailcomRx::parseMessage` can differentiate `EXT` from `STAT4` based on its 18-bit datagram length. However, the 14-bit payload is not further interpreted.
-    *   **Test:** No end-to-end test exists.
+    *   **Status: Implemented**
+    *   **Tx:** `RailcomTx::sendExt` correctly encodes and sends the 14-bit payload with type and position.
+    *   **Rx:** `RailcomRx::parseMessage` correctly differentiates `EXT` from `STAT4` by length and fully parses the 14-bit payload.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
-*   **`INFO1` (ID 3, alias for EXT) / `INFO` (ID 4) - Additional Info**
-    *   **Status: Not Implemented**
-    *   **Details:** There is no definition, sender function, or parsing logic for these mobile-decoder-specific info messages. Message ID 3 is parsed as `STAT4` or `EXT`, and ID 4 is parsed as `STAT1`.
+*   **`INFO1` (ID 3) - Additional Info**
+    *   **Status: Implemented**
+    *   **Tx:** `RailcomTx` can be configured via `enableInfo1()` to cyclically send the INFO1 message on Channel 1 as part of the address broadcast.
+    *   **Rx:** `RailcomRx` uses a decoder context (`setContext`) to correctly distinguish and parse INFO1 messages from STAT4 messages, as they share the same ID and length.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino` (`info1_cycle_e2e`).
 
 *   **`Aktuelle Fahrinformation` / Current Driving Info (ID 4)**
     *   **Status: Not Implemented**

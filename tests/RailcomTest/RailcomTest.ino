@@ -195,8 +195,83 @@ void setup() {
   run_test(ack_nack_e2e);
   run_test(rerailing_search_e2e);
   run_test(data_space_e2e);
+  run_test(info1_cycle_e2e);
 
   Serial.println("All tests passed!");
+}
+
+// Verifies the end-to-end transmission and reception of the ADR/INFO1 cycle.
+test(info1_cycle_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t longAddress = 4097;
+
+  // Enable INFO1 with some dummy data
+  Info1Message info1_data;
+  info1_data.on_track_direction_is_positive = true;
+  info1_data.travel_direction_is_positive = false;
+  info1_data.is_moving = true;
+  info1_data.is_in_consist = false;
+  info1_data.request_addressing = true;
+  tx.enableInfo1(info1_data);
+
+  // Set receiver context to mobile to correctly interpret ID 3
+  rx.setContext(DecoderContext::MOBILE);
+
+  // --- First cycle ---
+  // 1. ADR_HIGH
+  tx.sendAddress(longAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_HIGH);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, (longAddress >> 8) & 0x3F);
+  hardware.clear();
+
+  // 2. ADR_LOW
+  tx.sendAddress(longAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_LOW);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, longAddress & 0xFF);
+  hardware.clear();
+
+  // 3. INFO1
+  tx.sendAddress(longAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::INFO1);
+  Info1Message* received_info1 = static_cast<Info1Message*>(msg);
+  assertEqual(received_info1->on_track_direction_is_positive, true);
+  assertEqual(received_info1->travel_direction_is_positive, false);
+  assertEqual(received_info1->is_moving, true);
+  assertEqual(received_info1->is_in_consist, false);
+  assertEqual(received_info1->request_addressing, true);
+  hardware.clear();
+
+  // Disable INFO1 and verify the cycle returns to 2 states
+  tx.disableInfo1();
+
+  // --- Second cycle (should be only ADR_HIGH, ADR_LOW) ---
+  // 1. ADR_HIGH
+  tx.sendAddress(longAddress); // Should be ADR_HIGH again
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_HIGH);
+  hardware.clear();
+
+  // 2. ADR_LOW
+  tx.sendAddress(longAddress);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_LOW);
+  hardware.clear();
 }
 
 // Verifies the end-to-end transmission and reception of a long address.

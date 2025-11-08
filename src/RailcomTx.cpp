@@ -4,7 +4,7 @@
 #include <cstring>
 
 RailcomTx::RailcomTx(RailcomHardware* hardware)
-    : _hardware(hardware), _long_address_alternator(false) {
+    : _hardware(hardware), _address_alternator(0), _info1_enabled(false), _info1_payload(0) {
 }
 
 void RailcomTx::begin() {
@@ -39,20 +39,52 @@ void RailcomTx::sendExt(uint8_t type, uint8_t position) {
 }
 
 void RailcomTx::sendAddress(uint16_t address) {
-    if (address >= MIN_SHORT_ADDRESS && address <= MAX_SHORT_ADDRESS) { // Short
-        if (_long_address_alternator) { // Send ADR_HIGH with 0 payload
-            sendDatagram(1, RailcomID::ADR_HIGH, 0, 8);
-        } else { // Send ADR_LOW with the address
-            sendDatagram(1, RailcomID::ADR_LOW, address & 0x7F, 8);
-        }
-    } else { // Long
-        if (_long_address_alternator) {
-            sendDatagram(1, RailcomID::ADR_HIGH, (address >> 8) & 0x3F, 6);
-        } else {
-            sendDatagram(1, RailcomID::ADR_LOW, address & 0xFF, 8);
-        }
+    uint8_t max_alternator = _info1_enabled ? 3 : 2;
+
+    switch (_address_alternator) {
+        case 0: // ADR_HIGH
+            if (address >= MIN_SHORT_ADDRESS && address <= MAX_SHORT_ADDRESS) {
+                sendDatagram(1, RailcomID::ADR_HIGH, 0, 8);
+            } else {
+                sendDatagram(1, RailcomID::ADR_HIGH, (address >> 8) & 0x3F, 6);
+            }
+            break;
+        case 1: // ADR_LOW
+            if (address >= MIN_SHORT_ADDRESS && address <= MAX_SHORT_ADDRESS) {
+                sendDatagram(1, RailcomID::ADR_LOW, address & 0x7F, 8);
+            } else {
+                sendDatagram(1, RailcomID::ADR_LOW, address & 0xFF, 8);
+            }
+            break;
+        case 2: // INFO1
+            if (_info1_enabled) {
+                sendDatagram(1, RailcomID::INFO1, _info1_payload, 8);
+            }
+            break;
     }
-    _long_address_alternator = !_long_address_alternator;
+    _address_alternator = (_address_alternator + 1) % max_alternator;
+}
+
+uint8_t RailcomTx::buildInfo1Payload(const Info1Message& info1) {
+    uint8_t payload = 0;
+    payload |= (info1.on_track_direction_is_positive ? 1 : 0) << 0;
+    payload |= (info1.travel_direction_is_positive ? 1 : 0) << 1;
+    payload |= (info1.is_moving ? 1 : 0) << 2;
+    payload |= (info1.is_in_consist ? 1 : 0) << 3;
+    payload |= (info1.request_addressing ? 1 : 0) << 4;
+    return payload;
+}
+
+void RailcomTx::enableInfo1(const Info1Message& info1) {
+    _info1_payload = buildInfo1Payload(info1);
+    _info1_enabled = true;
+}
+
+void RailcomTx::disableInfo1() {
+    _info1_enabled = false;
+    if (_address_alternator > 1) {
+        _address_alternator = 0;
+    }
 }
 
 void RailcomTx::sendDynamicData(uint8_t subIndex, uint8_t value) {
