@@ -56,13 +56,17 @@ uint8_t crc8(const uint8_t* data, size_t len, uint8_t init) {
     return crc;
 }
 
-std::vector<uint8_t> encodeDatagram(RailcomID id, uint32_t payload, uint8_t payloadBits) {
+std::vector<uint8_t> encodeDatagram(RailcomID id, uint64_t payload, uint8_t payloadBits) {
     uint8_t totalBits = 4 + payloadBits;
-    uint8_t numBytes = (totalBits + 5) / 6;
+    // Round up to the nearest 6 bits
+    if (totalBits % 6 != 0) {
+        totalBits = ((totalBits / 6) + 1) * 6;
+    }
+    uint8_t numBytes = totalBits / 6;
     uint64_t data = ((uint64_t)static_cast<uint8_t>(id) << payloadBits) | payload;
 
     std::vector<uint8_t> encodedBytes;
-    int currentBit = (numBytes * 6) - 6;
+    int currentBit = totalBits - 6;
     for (int i = 0; i < numBytes; ++i) {
         uint8_t chunk = (data >> currentBit) & 0x3F;
         encodedBytes.push_back(encode4of8(chunk));
@@ -71,23 +75,9 @@ std::vector<uint8_t> encodeDatagram(RailcomID id, uint32_t payload, uint8_t payl
     return encodedBytes;
 }
 
-std::vector<uint8_t> encodeBundledDatagram(uint64_t payload) {
-    std::vector<uint8_t> encodedBytes;
-    int currentBit = 42;
-    for (int i = 0; i < 8; ++i) {
-        uint8_t chunk = (payload >> currentBit) & 0x3F;
-        encodedBytes.push_back(encode4of8(chunk));
-        currentBit -= 6;
-    }
-    return encodedBytes;
-}
-
 std::vector<uint8_t> encodeServiceRequest(uint16_t accessoryAddress, bool isExtended) {
     uint16_t payload = (accessoryAddress & 0x7FF) | (isExtended ? 0x800 : 0x000);
-    std::vector<uint8_t> encodedBytes;
-    encodedBytes.push_back(encode4of8((payload >> 6) & 0x3F));
-    encodedBytes.push_back(encode4of8(payload & 0x3F));
-    return encodedBytes;
+    return encodeDatagram(RailcomID::SRQ, payload, 12);
 }
 
 }

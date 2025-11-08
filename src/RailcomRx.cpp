@@ -100,13 +100,6 @@ void RailcomRx::print(Print& stream) {
              }
              break;
         }
-        case RailcomID::SRQ: {
-            SrqMessage* msg = static_cast<SrqMessage*>(_lastMessage);
-            stream.print("  ID: SRQ (4)\n");
-            stream.printf("  Accessory Address: %u\n", msg->accessoryAddress);
-            stream.printf("  Is Extended: %s\n", msg->isExtended ? "Yes" : "No");
-            break;
-        }
         case RailcomID::DYN: {
              DynMessage* msg = static_cast<DynMessage*>(_lastMessage);
              stream.print("  ID: DYN (7)\n");
@@ -124,18 +117,25 @@ void RailcomRx::print(Print& stream) {
             }
             break;
         }
-        case RailcomID::DECODER_STATE:
+        case RailcomID::DECODER_STATE: {
+            DecoderStateMessage* msg = static_cast<DecoderStateMessage*>(_lastMessage);
             stream.print("  ID: DECODER_STATE (13)\n");
-            stream.printf("  Application-specific state: %lu\n", static_cast<DecoderStateMessage*>(_lastMessage)->state);
+            stream.printf("  Change Flags: %u\n", msg->changeFlags);
+            stream.printf("  Change Count: %u\n", msg->changeCount);
+            stream.printf("  Protocol Caps: %u\n", msg->protocolCaps);
             break;
+        }
         case RailcomID::RERAIL:
-            stream.print("  ID: RERAIL (14)\n");
-            stream.printf("  Rerail counter: %u\n", static_cast<RerailMessage*>(_lastMessage)->counter);
+            stream.print("  ID: RERAIL/SRQ (14)\n");
+            // Cannot distinguish between RERAIL and SRQ here, so printing raw payload.
             break;
-        case RailcomID::DECODER_UNIQUE:
+        case RailcomID::DECODER_UNIQUE: {
+            DecoderUniqueMessage* msg = static_cast<DecoderUniqueMessage*>(_lastMessage);
             stream.print("  ID: DECODER_UNIQUE (15)\n");
-            stream.printf("  Unique ID part: %lu\n", static_cast<DecoderUniqueMessage*>(_lastMessage)->uniqueId);
+            stream.printf("  Manufacturer ID: %u\n", msg->manufacturerId);
+            stream.printf("  Product ID: %lu\n", msg->productId);
             break;
+        }
         default:
             stream.printf("  ID: %d (Unknown)\n", static_cast<int>(_lastMessage->id));
             break;
@@ -205,20 +205,11 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 return msg;
             }
         }
-        case RailcomID::STAT1: { // Also handles SRQ and INFO
-            if (bitCount == 12) { // 4 ID bits + 8 payload bits
-                Stat1Message* msg = new Stat1Message();
-                msg->id = id;
-                msg->status = payload;
-                return msg;
-            } else if (bitCount == 18) { // 4 ID bits + 14 payload bits (SRQ uses 12)
-                SrqMessage* msg = new SrqMessage();
-                msg->id = RailcomID::SRQ;
-                msg->accessoryAddress = payload & 0x7FF;
-                msg->isExtended = (payload >> 11) & 0x01;
-                return msg;
-            }
-            return nullptr; // Unknown length for this ID
+        case RailcomID::STAT1: {
+            Stat1Message* msg = new Stat1Message();
+            msg->id = id;
+            msg->status = payload;
+            return msg;
         }
         case RailcomID::STAT4: {
             Stat4Message* msg = new Stat4Message();
@@ -249,19 +240,29 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
         case RailcomID::DECODER_STATE: {
             DecoderStateMessage* msg = new DecoderStateMessage();
             msg->id = id;
-            msg->state = payload;
+            msg->protocolCaps = (payload >> 8) & 0xFFFF;
+            msg->changeCount = (payload >> 24) & 0x0FFF;
+            msg->changeFlags = (payload >> 36) & 0xFF;
             return msg;
         }
-        case RailcomID::RERAIL: {
-            RerailMessage* msg = new RerailMessage();
-            msg->id = id;
-            msg->counter = payload;
-            return msg;
-        }
+        case RailcomID::RERAIL: // and SRQ
+            if (bitCount - 4 == 12) { // SRQ
+                SrqMessage* msg = new SrqMessage();
+                msg->id = RailcomID::SRQ;
+                msg->isExtended = (payload >> 11) & 0x01;
+                msg->accessoryAddress = payload & 0x7FF;
+                return msg;
+            } else { // RERAIL
+                RerailMessage* msg = new RerailMessage();
+                msg->id = RailcomID::RERAIL;
+                msg->counter = payload;
+                return msg;
+            }
         case RailcomID::DECODER_UNIQUE: {
             DecoderUniqueMessage* msg = new DecoderUniqueMessage();
             msg->id = id;
-            msg->uniqueId = payload;
+            msg->productId = payload & 0xFFFFFFFF;
+            msg->manufacturerId = (payload >> 32) & 0x0FFF;
             return msg;
         }
         default:

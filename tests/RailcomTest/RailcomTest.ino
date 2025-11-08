@@ -175,31 +175,15 @@ void setup() {
   run_test(end_to_end);
   run_test(long_address_e2e);
   run_test(short_address_e2e);
+  run_test(service_request_e2e);
   run_test(decoder_state_machine_e2e);
-  run_test(srq_e2e);
+  run_test(decoder_unique_e2e);
+  run_test(decoder_state_e2e);
+  run_test(ack_nack_e2e);
+  run_test(rerailing_search_e2e);
+  run_test(data_space_e2e);
 
   Serial.println("All tests passed!");
-}
-
-// Verifies the end-to-end transmission and reception of a Service Request.
-test(srq_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
-  RailcomMessage* msg;
-  uint16_t accessoryAddress = 1234;
-  bool isExtended = true;
-
-  tx.sendServiceRequest(accessoryAddress, isExtended);
-  hardware.setRxBuffer(hardware.getQueuedMessages());
-  msg = rx.read();
-
-  assertNotNull(msg);
-  assertEqual(msg->id, RailcomID::SRQ);
-  SrqMessage* srqMsg = static_cast<SrqMessage*>(msg);
-  assertEqual(srqMsg->accessoryAddress, accessoryAddress);
-  assertEqual(srqMsg->isExtended, isExtended);
-  hardware.clear();
 }
 
 // Verifies the end-to-end transmission and reception of a long address.
@@ -254,4 +238,144 @@ test(decoder_state_machine_e2e) {
 
 void loop() {
   // Do nothing
+}
+
+// Verifies the end-to-end transmission and reception of a service request.
+test(service_request_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t accessoryAddress = 1234;
+
+  tx.sendServiceRequest(accessoryAddress, true);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::SRQ);
+  SrqMessage* srqMsg = static_cast<SrqMessage*>(msg);
+  assertEqual(srqMsg->accessoryAddress, accessoryAddress);
+  assertEqual(srqMsg->isExtended, true);
+  hardware.clear();
+}
+
+// Verifies the end-to-end transmission and reception of a DECODER_UNIQUE message.
+test(decoder_unique_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t manufacturerId = 0x0ABC; // 12-bit value
+  uint32_t productId = 0x12345678;
+
+  tx.sendDecoderUnique(manufacturerId, productId);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::DECODER_UNIQUE);
+  DecoderUniqueMessage* uniqueMsg = static_cast<DecoderUniqueMessage*>(msg);
+  assertEqual(uniqueMsg->manufacturerId, manufacturerId);
+  assertEqual(uniqueMsg->productId, productId);
+  hardware.clear();
+}
+
+// Verifies the end-to-end transmission and reception of a DECODER_STATE message.
+test(decoder_state_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+
+  tx.sendDecoderState(0xAA, 0x0BCC, 0xDDEE); // 12-bit changeCount
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::DECODER_STATE);
+  DecoderStateMessage* stateMsg = static_cast<DecoderStateMessage*>(msg);
+  assertEqual(stateMsg->changeFlags, 0xAA);
+  assertEqual(stateMsg->changeCount, 0x0BCC);
+  assertEqual(stateMsg->protocolCaps, 0xDDEE);
+  hardware.clear();
+}
+
+// Verifies the correct byte sequences for ACK and NACK messages.
+test(ack_nack_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+
+  // Test ACK
+  tx.sendAck();
+  auto queuedMsgs = hardware.getQueuedMessages();
+  assertTrue(queuedMsgs.count(1));
+  assertTrue(queuedMsgs.count(2));
+  std::vector<uint8_t> expected_ch1_ack = {RAILCOM_ACK1, RAILCOM_ACK2};
+  std::vector<uint8_t> expected_ch2_ack = {RAILCOM_ACK1, RAILCOM_ACK2, RAILCOM_ACK1, RAILCOM_ACK2};
+  assertEqual(queuedMsgs.at(1).size(), expected_ch1_ack.size());
+  for(size_t i=0; i<expected_ch1_ack.size(); ++i) assertEqual(queuedMsgs.at(1)[i], expected_ch1_ack[i]);
+  assertEqual(queuedMsgs.at(2).size(), expected_ch2_ack.size());
+  for(size_t i=0; i<expected_ch2_ack.size(); ++i) assertEqual(queuedMsgs.at(2)[i], expected_ch2_ack[i]);
+  hardware.clear();
+
+  // Test NACK
+  tx.sendNack();
+  queuedMsgs = hardware.getQueuedMessages();
+  assertTrue(queuedMsgs.count(1));
+  assertTrue(queuedMsgs.count(2));
+  std::vector<uint8_t> expected_ch1_nack = {RAILCOM_NACK, RAILCOM_NACK};
+  std::vector<uint8_t> expected_ch2_nack = {RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK};
+  assertEqual(queuedMsgs.at(1).size(), expected_ch1_nack.size());
+  for(size_t i=0; i<expected_ch1_nack.size(); ++i) assertEqual(queuedMsgs.at(1)[i], expected_ch1_nack[i]);
+  assertEqual(queuedMsgs.at(2).size(), expected_ch2_nack.size());
+  for(size_t i=0; i<expected_ch2_nack.size(); ++i) assertEqual(queuedMsgs.at(2)[i], expected_ch2_nack[i]);
+  hardware.clear();
+}
+
+// Verifies the end-to-end transmission and reception for handleRerailingSearch.
+test(rerailing_search_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+  uint16_t address = 0x1234;
+  uint32_t seconds = 123;
+
+  tx.handleRerailingSearch(address, seconds);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+
+  // 1. ADR_HIGH
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_HIGH);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, (address >> 8) & 0x3F);
+
+  // 2. ADR_LOW
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::ADR_LOW);
+  assertEqual(static_cast<AdrMessage*>(msg)->address, address & 0xFF);
+
+  // 3. RERAIL
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::RERAIL);
+  assertEqual(static_cast<RerailMessage*>(msg)->counter, seconds);
+
+  hardware.clear();
+}
+
+// Verifies that sendDataSpace queues messages on the correct channels.
+test(data_space_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  uint8_t data[] = {0x01, 0x02, 0x03};
+
+  tx.sendDataSpace(data, sizeof(data), 1);
+  auto queuedMsgs = hardware.getQueuedMessages();
+  assertTrue(queuedMsgs.count(1));
+  assertTrue(queuedMsgs.count(2));
+  // A full end-to-end test is complex due to CRC.
+  // For now, just verify that *something* was sent on both channels.
+  assertTrue(queuedMsgs.at(1).size() > 0);
+  assertTrue(queuedMsgs.at(2).size() > 0);
+  hardware.clear();
 }

@@ -23,7 +23,7 @@ void RailcomTx::send_dcc_with_cutout(const DCCMessage& dccMsg) {
     _hardware->send_dcc_with_cutout(dccMsg);
 }
 
-void RailcomTx::sendDatagram(uint8_t channel, RailcomID id, uint32_t payload, uint8_t payloadBits) {
+void RailcomTx::sendDatagram(uint8_t channel, RailcomID id, uint64_t payload, uint8_t payloadBits) {
     _hardware->queue_message(channel, RailcomEncoding::encodeDatagram(id, payload, payloadBits));
 }
 
@@ -72,12 +72,8 @@ void RailcomTx::handleRerailingSearch(uint16_t address, uint32_t secondsSincePow
 }
 
 void RailcomTx::sendServiceRequest(uint16_t accessoryAddress, bool isExtended) {
-    // RCN-217 specifies SRQ (ID 4) is sent on Channel 2.
-    // The total datagram length must be a multiple of 6. 4 (ID) + 12 (Payload) = 16.
-    // We must pad to 18 bits, which means the payload field becomes 14 bits wide.
-    if (accessoryAddress > 2047) return; // Address must be 11 bits max
-    uint16_t payload = (accessoryAddress & 0x7FF) | (isExtended ? 0x800 : 0x000);
-    sendDatagram(2, RailcomID::SRQ, payload, 14);
+    if (accessoryAddress > MAX_ACCESSORY_ADDRESS) return;
+    _hardware->queue_message(1, RailcomEncoding::encodeServiceRequest(accessoryAddress, isExtended));
 }
 
 void RailcomTx::sendStatus1(uint8_t status) {
@@ -103,18 +99,17 @@ void RailcomTx::sendError(uint8_t errorCode) {
 }
 
 void RailcomTx::sendDecoderUnique(uint16_t manufacturerId, uint32_t productId) {
-    uint64_t payload = ((uint64_t)manufacturerId << 32) | productId;
-    payload |= ((uint64_t)RailcomID::DECODER_UNIQUE << 44);
-    sendBundledDatagram(payload);
+    uint64_t payload = ((uint64_t)(manufacturerId & 0x0FFF) << 32) | (productId & 0xFFFFFFFF);
+    sendDatagram(2, RailcomID::DECODER_UNIQUE, payload, 44);
 }
 
 void RailcomTx::sendDecoderState(uint8_t changeFlags, uint16_t changeCount, uint16_t protocolCaps) {
     uint64_t payload = 0;
-    payload |= (uint64_t)changeFlags << 32;
-    payload |= (uint64_t)changeCount << 20;
-    payload |= (uint64_t)protocolCaps << 4;
-    payload |= ((uint64_t)RailcomID::DECODER_STATE << 44);
-    sendBundledDatagram(payload);
+    payload |= (uint64_t)(changeFlags & 0xFF) << 36;
+    payload |= (uint64_t)(changeCount & 0x0FFF) << 24;
+    payload |= (uint64_t)(protocolCaps & 0xFFFF) << 8;
+    // 8 bits reserved
+    sendDatagram(2, RailcomID::DECODER_STATE, payload, 44);
 }
 
 void RailcomTx::sendDataSpace(const uint8_t* data, size_t len, uint8_t dataSpaceNum) {
@@ -147,8 +142,3 @@ void RailcomTx::sendNack() {
     _hardware->queue_message(2, nackBytes);
 }
 
-void RailcomTx::sendBundledDatagram(uint64_t payload) {
-    std::vector<uint8_t> encodedBytes = RailcomEncoding::encodeBundledDatagram(payload);
-    _hardware->queue_message(1, std::vector<uint8_t>(encodedBytes.begin(), encodedBytes.begin() + 2));
-    _hardware->queue_message(2, std::vector<uint8_t>(encodedBytes.begin() + 2, encodedBytes.end()));
-}

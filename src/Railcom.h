@@ -20,10 +20,10 @@ private:
 enum class RailcomID {
     // RCN-217
     POM = 0, ADR_HIGH = 1, ADR_LOW = 2, EXT = 3, STAT4 = 3,
-    INFO = 4, STAT1 = 4, SRQ = 4, TIME = 5, ERROR = 6, DYN = 7,
+    INFO = 4, STAT1 = 4, TIME = 5, ERROR = 6, DYN = 7,
     XPOM_0 = 8, STAT2 = 8, XPOM_1 = 9, XPOM_2 = 10, XPOM_3 = 11,
     CV_AUTO = 12,
-    RERAIL = 14,
+    SRQ = 14, RERAIL = 14,
 
     // RCN-218
     DECODER_STATE = 13,
@@ -56,7 +56,6 @@ struct TimeMessage : public RailcomMessage {
 struct Stat1Message : public RailcomMessage { uint8_t status; };
 struct Stat2Message : public RailcomMessage { uint8_t status; };
 struct Stat4Message : public RailcomMessage { uint8_t status; };
-struct SrqMessage : public RailcomMessage { uint16_t accessoryAddress; bool isExtended; };
 struct ErrorMessage : public RailcomMessage { uint8_t errorCode; };
 struct CvAutoMessage : public RailcomMessage { uint32_t cvAddress; uint8_t cvValue; };
 struct XpomMessage : public RailcomMessage {
@@ -65,15 +64,23 @@ struct XpomMessage : public RailcomMessage {
 };
 
 struct DecoderUniqueMessage : public RailcomMessage {
-    uint32_t uniqueId;
+    uint16_t manufacturerId;
+    uint32_t productId;
 };
 
 struct DecoderStateMessage : public RailcomMessage {
-    uint32_t state;
+    uint8_t changeFlags;
+    uint16_t changeCount;
+    uint16_t protocolCaps;
 };
 
 struct RerailMessage : public RailcomMessage {
     uint8_t counter;
+};
+
+struct SrqMessage : public RailcomMessage {
+    uint16_t accessoryAddress;
+    bool isExtended;
 };
 
 // --- Constants ---

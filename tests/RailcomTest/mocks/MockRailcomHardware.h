@@ -3,14 +3,18 @@
 
 #include "RailcomHardware.h"
 #include <vector>
+#include <map>
 
 class MockRailcomHardware : public RailcomHardware {
 public:
     // --- Methods to control the mock ---
-    void setRxBuffer(const std::vector<uint8_t>& data) {
-        _rxBuffer = data;
+    void setRxBuffer(const std::map<uint8_t, std::vector<uint8_t>>& data) {
+        if (data.count(1)) _rxBuffer = data.at(1);
+        if (data.count(2)) {
+            _rxBuffer.insert(_rxBuffer.end(), data.at(2).begin(), data.at(2).end());
+        }
     }
-    std::vector<uint8_t> getQueuedMessages() { return _queuedMessages; }
+    std::map<uint8_t, std::vector<uint8_t>> getQueuedMessages() { return _queuedMessages; }
     void clear() {
         _rxBuffer.clear();
         _queuedMessages.clear();
@@ -26,7 +30,7 @@ public:
     }
 
     void queue_message(uint8_t channel, const std::vector<uint8_t>& message) override {
-        _queuedMessages.insert(_queuedMessages.end(), message.begin(), message.end());
+        _queuedMessages[channel].insert(_queuedMessages[channel].end(), message.begin(), message.end());
     }
 
     int available() override {
@@ -44,7 +48,7 @@ public:
 
 private:
     std::vector<uint8_t> _rxBuffer;
-    std::vector<uint8_t> _queuedMessages;
+    std::map<uint8_t, std::vector<uint8_t>> _queuedMessages;
 };
 
 #endif // MOCK_RAILCOM_HARDWARE_H
