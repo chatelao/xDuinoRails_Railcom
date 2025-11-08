@@ -38,8 +38,7 @@ public:
     void sendNack();
 
 private:
-    void sendDatagram(uint8_t channel, RailcomID id, uint32_t payload, uint8_t payloadBits);
-    void sendBundledDatagram(uint64_t payload);
+    void sendDatagram(uint8_t channel, RailcomID id, uint64_t payload, uint8_t payloadBits);
 
     RailcomHardware* _hardware;
     bool _long_address_alternator;
