@@ -28,6 +28,10 @@ bool RailcomRx::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
     return !buffer.empty();
 }
 
+void RailcomRx::setContext(DecoderContext context) {
+    _context = context;
+}
+
 RailcomMessage* RailcomRx::read() {
     // Clear previous message
     if (_lastMessage != nullptr) {
@@ -87,6 +91,14 @@ void RailcomRx::print(Print& stream) {
                 stream.print("  ID: EXT (3)\n");
                 stream.printf("  Type: %u\n", msg->type);
                 stream.printf("  Position: %u\n", msg->position);
+            } else if (_lastMessage->id == RailcomID::INFO1) {
+                Info1Message* msg = static_cast<Info1Message*>(_lastMessage);
+                stream.print("  ID: INFO1 (3)\n");
+                stream.printf("  On-track direction positive: %d\n", msg->on_track_direction_is_positive);
+                stream.printf("  Travel direction positive: %d\n", msg->travel_direction_is_positive);
+                stream.printf("  Is moving: %d\n", msg->is_moving);
+                stream.printf("  Is in consist: %d\n", msg->is_in_consist);
+                stream.printf("  Request addressing: %d\n", msg->request_addressing);
             } else { // STAT4 message has 8 payload bits -> 12 total bits -> 2 bytes
                 stream.print("  ID: STAT4 (3)\n");
                 uint8_t status = static_cast<Stat4Message*>(_lastMessage)->status;
@@ -217,8 +229,8 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             msg->status = payload;
             return msg;
         }
-        case RailcomID::EXT: { // Also STAT4
-            if (bitCount == 18) { // EXT Message
+        case RailcomID::EXT: { // Also STAT4 and INFO1
+            if (bitCount == 18) { // EXT Message (currently no context needed)
                 ExtMessage* msg = new ExtMessage();
                 msg->id = RailcomID::EXT;
                 uint8_t type = (payload >> 8) & 0x0F;
@@ -227,11 +239,22 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 msg->type = type;
                 msg->position = payload & 0xFF;
                 return msg;
-            } else { // STAT4 Message
-                Stat4Message* msg = new Stat4Message();
-                msg->id = RailcomID::STAT4;
-                msg->status = payload;
-                return msg;
+            } else { // INFO1 or STAT4 Message (8 payload bits)
+                if (_context == DecoderContext::MOBILE) {
+                    Info1Message* msg = new Info1Message();
+                    msg->id = RailcomID::INFO1;
+                    msg->on_track_direction_is_positive = (payload >> 0) & 1;
+                    msg->travel_direction_is_positive = (payload >> 1) & 1;
+                    msg->is_moving = (payload >> 2) & 1;
+                    msg->is_in_consist = (payload >> 3) & 1;
+                    msg->request_addressing = (payload >> 4) & 1;
+                    return msg;
+                } else { // Default to STATIONARY or if UNKNOWN
+                    Stat4Message* msg = new Stat4Message();
+                    msg->id = RailcomID::STAT4;
+                    msg->status = payload;
+                    return msg;
+                }
             }
         }
         case RailcomID::ERROR: {

@@ -11,6 +11,7 @@ public:
     void begin();
     void task();
     RailcomMessage* read();
+    void setContext(DecoderContext context);
     void print(Print& stream);
 
 private:
@@ -20,6 +21,7 @@ private:
     std::vector<uint8_t> _lastRawBytes;
     RailcomMessage* _lastMessage = nullptr;
     uint8_t _lastAdrHigh = 0;
+    DecoderContext _context = DecoderContext::UNKNOWN;
 };
 
 #endif // RAILCOM_RX_H

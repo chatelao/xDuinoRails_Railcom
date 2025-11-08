@@ -18,6 +18,8 @@ public:
     void sendPomResponse(uint8_t cvValue);
     void sendExt(uint8_t type, uint8_t position);
     virtual void sendAddress(uint16_t address);
+    void enableInfo1(const Info1Message& info1);
+    void disableInfo1();
     void sendDynamicData(uint8_t subIndex, uint8_t value);
     void sendCvAuto(uint32_t cvAddress, uint8_t cvValue);
     void sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4]);
@@ -40,9 +42,12 @@ public:
 
 private:
     void sendDatagram(uint8_t channel, RailcomID id, uint64_t payload, uint8_t payloadBits);
+    uint8_t buildInfo1Payload(const Info1Message& info1);
 
     RailcomHardware* _hardware;
-    bool _long_address_alternator;
+    uint8_t _address_alternator; // 0 for ADR_HIGH, 1 for ADR_LOW, 2 for INFO1
+    bool _info1_enabled;
+    uint8_t _info1_payload;
 };
 
 #endif // RAILCOM_TX_H

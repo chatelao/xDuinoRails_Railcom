@@ -19,7 +19,7 @@ private:
 // Enum for RailCom Message IDs as per RCN-217 and RCN-218
 enum class RailcomID {
     // RCN-217
-    POM = 0, ADR_HIGH = 1, ADR_LOW = 2, EXT = 3, STAT4 = 3,
+    POM = 0, ADR_HIGH = 1, ADR_LOW = 2, EXT = 3, STAT4 = 3, INFO1 = 3,
     INFO = 4, STAT1 = 4, TIME = 5, ERROR = 6, DYN = 7,
     XPOM_0 = 8, STAT2 = 8, XPOM_1 = 9, XPOM_2 = 10, XPOM_3 = 11,
     CV_AUTO = 12,
@@ -42,6 +42,13 @@ namespace RCN218 {
     const uint8_t CMD_SET_DATA_END = 0x03;
 }
 
+// Enum to provide context for ambiguous message IDs
+enum class DecoderContext {
+    UNKNOWN,
+    MOBILE,
+    STATIONARY
+};
+
 // --- Message Structs ---
 
 struct RailcomMessage { RailcomID id; };
@@ -49,6 +56,13 @@ struct PomMessage : public RailcomMessage { uint8_t cvValue; };
 struct AdrMessage : public RailcomMessage { uint16_t address; };
 struct DynMessage : public RailcomMessage { uint8_t subIndex; uint8_t value; };
 struct ExtMessage : public RailcomMessage { uint8_t type; uint8_t position; };
+struct Info1Message : public RailcomMessage {
+    bool on_track_direction_is_positive;
+    bool travel_direction_is_positive;
+    bool is_moving;
+    bool is_in_consist;
+    bool request_addressing;
+};
 // A "Time" message (ID 5)
 struct TimeMessage : public RailcomMessage {
     uint8_t timeValue;
