@@ -7,10 +7,12 @@
 const uint16_t DECODER_ADDRESS = 4098;
 const uint16_t MANUFACTURER_ID = 0x0123;
 const uint32_t PRODUCT_ID = 0x456789AB;
+const uint8_t CV28 = 0b00000011; // Enable both channels
+const uint8_t CV29 = 0b00001010; // Enable RailCom
 
 RP2040RailcomHardware railcomHardware(uart0, 0, 2, 1);
 RailcomTx railcomTx(&railcomHardware);
-DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, CV28, CV29, MANUFACTURER_ID, PRODUCT_ID);
 
 void setup() {
     Serial.begin(115200);

@@ -9,7 +9,12 @@
 NmraDcc Dcc;
 RP2040RailcomHardware hardware(uart0, 1, 0, 3); // RX pin 3 is a placeholder
 RailcomTx railcomTx(&hardware);
-DecoderStateMachine stateMachine(railcomTx, DecoderType::ACCESSORY, 0);
+
+// For this example, we'll let the NmraDcc library manage the address.
+// We'll use standard default values for the CVs.
+const uint8_t CV28 = 0b00000011; // Enable both channels
+DecoderStateMachine stateMachine(railcomTx, DecoderType::ACCESSORY, 0, CV28, CV29_ACCESSORY_DECODER);
+
 
 void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputPower) {
   // We can't get the raw packet data from the new API, so we have to reconstruct it.

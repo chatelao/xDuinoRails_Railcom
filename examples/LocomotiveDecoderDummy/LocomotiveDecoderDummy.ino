@@ -9,11 +9,14 @@ const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 // For RCN-218 automatic logon, you would also provide the manufacturer and product IDs:
 // const uint16_t MANUFACTURER_ID = 0x0123;
 // const uint32_t PRODUCT_ID = 0x456789AB;
-// DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, MANUFACTURER_ID, PRODUCT_ID);
+// DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, CV28, CV29, MANUFACTURER_ID, PRODUCT_ID);
+
+const uint8_t CV28 = 0b00000011; // Enable both channels
+const uint8_t CV29 = 0b00001010; // Enable RailCom
 
 RP2040RailcomHardware hardware(uart0, 0, 1, 2); // RX pin 2 is a placeholder
 RailcomTx railcomTx(&hardware);
-DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, 0, 0);
+DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, CV28, CV29);
 
 unsigned long lastDccPacketTime = 0;
 
