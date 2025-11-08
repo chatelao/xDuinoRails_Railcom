@@ -196,6 +196,7 @@ void setup() {
   run_test(rerailing_search_e2e);
   run_test(data_space_e2e);
   run_test(info1_cycle_e2e);
+  run_test(info_message_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -510,5 +511,31 @@ test(data_space_e2e) {
   // For now, just verify that *something* was sent on both channels.
   assertTrue(queuedMsgs.at(1).size() > 0);
   assertTrue(queuedMsgs.at(2).size() > 0);
+  hardware.clear();
+}
+
+// Verifies the end-to-end transmission and reception of an INFO message.
+test(info_message_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+
+  // Set context to mobile to correctly interpret ID 4 as INFO
+  rx.setContext(DecoderContext::MOBILE);
+
+  uint16_t speed = 12345;
+  uint8_t motorLoad = 180;
+  uint8_t statusFlags = 0b10101010;
+
+  tx.sendInfo(speed, motorLoad, statusFlags);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::INFO);
+  InfoMessage* infoMsg = static_cast<InfoMessage*>(msg);
+  assertEqual(infoMsg->speed, speed);
+  assertEqual(infoMsg->motorLoad, motorLoad);
+  assertEqual(infoMsg->statusFlags, statusFlags);
   hardware.clear();
 }

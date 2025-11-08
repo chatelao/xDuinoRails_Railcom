@@ -67,6 +67,14 @@ void RailcomRx::print(Print& stream) {
             stream.print("  ID: POM (0)\n");
             stream.printf("  CV Value: %u\n", static_cast<PomMessage*>(_lastMessage)->cvValue);
             break;
+        case RailcomID::INFO: {
+            InfoMessage* msg = static_cast<InfoMessage*>(_lastMessage);
+            stream.print("  ID: INFO (4)\n");
+            stream.printf("  Speed: %u\n", msg->speed);
+            stream.printf("  Motor Load: %u\n", msg->motorLoad);
+            stream.printf("  Status Flags: 0x%02X\n", msg->statusFlags);
+            break;
+        }
         case RailcomID::ADR_HIGH: {
             uint16_t adrPart = static_cast<AdrMessage*>(_lastMessage)->address;
             _lastAdrHigh = adrPart;
@@ -223,11 +231,20 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 return msg;
             }
         }
-        case RailcomID::STAT1: {
-            Stat1Message* msg = new Stat1Message();
-            msg->id = id;
-            msg->status = payload;
-            return msg;
+        case RailcomID::INFO: { // Also STAT1
+            if (bitCount == 36 && _context == DecoderContext::MOBILE) {
+                InfoMessage* msg = new InfoMessage();
+                msg->id = RailcomID::INFO;
+                msg->speed = (payload >> 16) & 0xFFFF;
+                msg->motorLoad = (payload >> 8) & 0xFF;
+                msg->statusFlags = payload & 0xFF;
+                return msg;
+            } else { // STAT1 message (or default for context)
+                Stat1Message* msg = new Stat1Message();
+                msg->id = RailcomID::STAT1;
+                msg->status = payload;
+                return msg;
+            }
         }
         case RailcomID::EXT: { // Also STAT4 and INFO1
             if (bitCount == 18) { // EXT Message (currently no context needed)

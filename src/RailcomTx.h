@@ -16,6 +16,7 @@ public:
 
     // --- Vehicle Decoder (MOB) Functions ---
     void sendPomResponse(uint8_t cvValue);
+    void sendInfo(uint16_t speed, uint8_t motorLoad, uint8_t statusFlags);
     void sendExt(uint8_t type, uint8_t position);
     virtual void sendAddress(uint16_t address);
     void enableInfo1(const Info1Message& info1);
