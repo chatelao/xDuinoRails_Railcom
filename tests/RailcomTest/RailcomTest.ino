@@ -164,6 +164,17 @@ test(end_to_end) {
   assertEqual(cvAutoMsg->cvAddress, 0x123456);
   assertEqual(cvAutoMsg->cvValue, 0xAB);
   hardware.clear();
+
+  // Verifies EXT (ID 3) message sending and parsing.
+  tx.sendExt(0x05, 0xBC);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::EXT);
+  ExtMessage* extMsg = static_cast<ExtMessage*>(msg);
+  assertEqual(extMsg->type, 0x05);
+  assertEqual(extMsg->position, 0xBC);
+  hardware.clear();
 }
 
 
