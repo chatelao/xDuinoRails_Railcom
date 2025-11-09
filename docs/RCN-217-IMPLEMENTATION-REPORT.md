@@ -125,7 +125,7 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Test:** Verified in `tests/RailcomTest/dynamic_channel1_management`.
 
 *   **Handling of Specific DCC Commands (XF1, XF2, etc.)**
-    *   **Status: Partially Implemented (XF1, XF2)**
-    *   **Details:** The `DecoderStateMachine` now automatically responds to an `XF1` (request for location information) DCC command and the `XF2` (rerailing search) broadcast command. The DCC parsing logic for other extended function commands is not yet implemented.
+    *   **Status: Implemented**
+    *   **Details:** The `DecoderStateMachine` now automatically responds to `XF1` (location request), `XF2` (rerailing search), `XF3` (CV-Auto toggle), and standard accessory decoder commands. This provides a comprehensive set of responses for common DCC operations.
 
 ---

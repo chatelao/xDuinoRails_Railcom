@@ -2,6 +2,7 @@
 #include "RailcomRx.h"
 #include "RailcomEncoding.h"
 #include "mocks/MockRailcomHardware.h"
+#include "mocks/MockDcc.h"
 
 // Minimal testing framework
 #define test(name) void test_##name()
@@ -210,6 +211,7 @@ void setup() {
   run_test(xf1_location_request_e2e);
   run_test(xf2_rerailing_search_broadcast_e2e);
   run_test(xf3_cv_auto_e2e);
+  run_test(accessory_decoder_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -684,5 +686,42 @@ test(xf2_rerailing_search_broadcast_e2e) {
   // The actual time will depend on how long the test takes to run.
   assertTrue(static_cast<RerailMessage*>(railcomMsg)->counter >= 0);
 
+  hardware.clear();
+}
+
+// Verifies the DecoderStateMachine's response to an accessory command.
+test(accessory_decoder_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  RailcomRx rx(&hardware);
+  uint16_t address = 200;
+  // CV29 enables RailCom.
+  DecoderStateMachine sm(tx, DecoderType::ACCESSORY, address, 0, 0b00001000);
+
+  // Set receiver context to stationary to correctly interpret ID 3
+  rx.setContext(DecoderContext::STATIONARY);
+
+  // --- 1. Activate output 1 ---
+  DCCMessage msg_on = MockDcc::createAccessoryDccMessage(address, true, 1);
+  sm.handleDccPacket(msg_on);
+
+  // Verify that a STAT4 message is sent with the correct bit set
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  RailcomMessage* railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::STAT4);
+  assertEqual(static_cast<Stat4Message*>(railcomMsg)->status, 0b00000010); // Output 1 corresponds to bit 1
+  hardware.clear();
+
+  // --- 2. Deactivate output 1 ---
+  DCCMessage msg_off = MockDcc::createAccessoryDccMessage(address, false, 1);
+  sm.handleDccPacket(msg_off);
+
+  // Verify that a STAT4 message is sent with the bit cleared
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::STAT4);
+  assertEqual(static_cast<Stat4Message*>(railcomMsg)->status, 0b00000000);
   hardware.clear();
 }
