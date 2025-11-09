@@ -143,12 +143,18 @@ void RailcomRx::print(Print& stream) {
             }
             break;
         }
-        case RailcomID::DECODER_STATE: {
-            DecoderStateMessage* msg = static_cast<DecoderStateMessage*>(_lastMessage);
-            stream.print("  ID: DECODER_STATE (13)\n");
-            stream.printf("  Change Flags: %u\n", msg->changeFlags);
-            stream.printf("  Change Count: %u\n", msg->changeCount);
-            stream.printf("  Protocol Caps: %u\n", msg->protocolCaps);
+        case RailcomID::DECODER_STATE: { // Also BLOCK
+            if (_lastRawBytes.size() == 8) { // 44-bit payload -> 48 total bits -> 8 bytes
+                DecoderStateMessage* msg = static_cast<DecoderStateMessage*>(_lastMessage);
+                stream.print("  ID: DECODER_STATE (13)\n");
+                stream.printf("  Change Flags: %u\n", msg->changeFlags);
+                stream.printf("  Change Count: %u\n", msg->changeCount);
+                stream.printf("  Protocol Caps: %u\n", msg->protocolCaps);
+            } else if (_lastRawBytes.size() == 6) { // 32-bit payload -> 36 total bits -> 6 bytes
+                BlockMessage* msg = static_cast<BlockMessage*>(_lastMessage);
+                stream.print("  ID: BLOCK (13)\n");
+                stream.printf("  Data: 0x%08lX\n", msg->data);
+            }
             break;
         }
         case RailcomID::RERAIL:
@@ -294,13 +300,21 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             msg->cvValue = payload & 0xFF;
             return msg;
         }
-        case RailcomID::DECODER_STATE: {
-            DecoderStateMessage* msg = new DecoderStateMessage();
-            msg->id = id;
-            msg->protocolCaps = (payload >> 8) & 0xFFFF;
-            msg->changeCount = (payload >> 24) & 0x0FFF;
-            msg->changeFlags = (payload >> 36) & 0xFF;
-            return msg;
+        case RailcomID::DECODER_STATE: { // Also BLOCK
+            if (bitCount - 4 == 44) { // DECODER_STATE
+                DecoderStateMessage* msg = new DecoderStateMessage();
+                msg->id = id;
+                msg->protocolCaps = (payload >> 8) & 0xFFFF;
+                msg->changeCount = (payload >> 24) & 0x0FFF;
+                msg->changeFlags = (payload >> 36) & 0xFF;
+                return msg;
+            } else if (bitCount - 4 == 32) { // BLOCK
+                BlockMessage* msg = new BlockMessage();
+                msg->id = RailcomID::BLOCK;
+                msg->data = payload;
+                return msg;
+            }
+            return nullptr;
         }
         case RailcomID::RERAIL: // and SRQ
             if (bitCount - 4 == 12) { // SRQ

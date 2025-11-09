@@ -25,6 +25,7 @@ public:
     void sendCvAuto(uint32_t cvAddress, uint8_t cvValue);
     void sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4]);
     void handleRerailingSearch(uint16_t address, uint32_t secondsSincePowerOn);
+    void sendBlock(uint32_t data);
 
     // --- Accessory Decoder (STAT) Functions ---
     void sendServiceRequest(uint16_t accessoryAddress, bool isExtended);
