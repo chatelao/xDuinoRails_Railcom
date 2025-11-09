@@ -5,7 +5,7 @@
 DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint8_t cv28, uint8_t cv29, uint16_t manufacturerId, uint32_t productId)
     : _txManager(txManager), _type(type), _address(address), _cv28(cv28), _cv29(cv29),
       _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE), _accessory_state(0), _channel1_broadcast_enabled(true),
-      _cv_auto_broadcast_active(false) {
+      _backoff_counter(0), _backoff_value(1), _cv_auto_broadcast_active(false) {
 
     // Populate the dummy CV list for testing
     _cvs[1] = 10;
@@ -64,9 +64,17 @@ void DecoderStateMachine::setupCallbacks() {
         if (_logonState == LogonState::IDLE) {
             _logonState = LogonState::WAITING_FOR_LOGON;
         }
+
         if (_logonState == LogonState::WAITING_FOR_LOGON) {
+            if (_backoff_counter > 0) {
+                _backoff_counter--;
+                return;
+            }
             _txManager.sendDecoderUnique(_manufacturerId, _productId);
             _logonState = LogonState::IN_SINGULATION;
+            // Progressively increase backoff time to avoid collisions
+            _backoff_counter = _backoff_value;
+            _backoff_value++;
         }
     };
 
@@ -85,6 +93,8 @@ void DecoderStateMachine::setupCallbacks() {
             if (_logonState == LogonState::ANNOUNCED) {
                 _address = address;
                 _logonState = LogonState::REGISTERED;
+                _backoff_counter = 0;
+                _backoff_value = 1;
                 _txManager.sendDecoderState(0, 0, 0); // Dummy values
             }
         }
