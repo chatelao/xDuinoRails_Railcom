@@ -4,7 +4,15 @@
 
 DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint8_t cv28, uint8_t cv29, uint16_t manufacturerId, uint32_t productId)
     : _txManager(txManager), _type(type), _address(address), _cv28(cv28), _cv29(cv29),
-      _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE), _accessory_state(0), _channel1_broadcast_enabled(true) {
+      _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE), _accessory_state(0), _channel1_broadcast_enabled(true),
+      _cv_auto_broadcast_active(false) {
+
+    // Populate the dummy CV list for testing
+    _cvs[1] = 10;
+    _cvs[8] = 155;
+    _cvs[29] = 34;
+    _cv_auto_iterator = _cvs.begin();
+
     setupCallbacks();
 }
 
@@ -32,6 +40,23 @@ void DecoderStateMachine::handleDccPacket(const DCCMessage& msg) {
     if (!response_sent && _type == DecoderType::LOCOMOTIVE && _channel1_broadcast_enabled) {
         _txManager.sendAddress(_address);
     }
+}
+
+void DecoderStateMachine::task() {
+    if (!_cv_auto_broadcast_active) {
+        return;
+    }
+
+    // If the iterator is at the end, reset it to the beginning.
+    if (_cv_auto_iterator == _cvs.end()) {
+        _cv_auto_iterator = _cvs.begin();
+    }
+
+    // Send the CV-Auto message for the current CV.
+    _txManager.sendCvAuto(_cv_auto_iterator->first, _cv_auto_iterator->second);
+
+    // Move to the next CV for the next call.
+    _cv_auto_iterator++;
 }
 
 void DecoderStateMachine::setupCallbacks() {
@@ -147,6 +172,15 @@ void DecoderStateMachine::setupCallbacks() {
                 // Send a dummy EXT message with type 0 and position 0.
                 // In a real application, these values would come from sensors.
                 _txManager.sendExt(0, 0);
+            }
+            // XF3 toggles the CV-Auto broadcast.
+            // See RCN-217 Section 5.7
+            else if (command == 0x03) {
+                _cv_auto_broadcast_active = !_cv_auto_broadcast_active;
+                // Reset iterator to the beginning when starting the broadcast
+                if (_cv_auto_broadcast_active) {
+                    _cv_auto_iterator = _cvs.begin();
+                }
             }
         }
     };

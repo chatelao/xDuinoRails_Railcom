@@ -6,6 +6,8 @@
 #include "RailcomRx.h"
 
 #include "RailcomDccParser.h"
+#include <map>
+#include <iterator>
 
 enum class DecoderType {
     LOCOMOTIVE,
@@ -30,6 +32,10 @@ public:
     // the appropriate RailCom response.
     void handleDccPacket(const DCCMessage& dccMsg);
 
+    // Should be called periodically in the main loop to handle ongoing tasks
+    // like the CV-Auto broadcast.
+    void task();
+
 private:
     void setupCallbacks();
 
@@ -50,6 +56,14 @@ private:
     uint8_t _accessory_state;
     // Flag to control the address broadcast on Channel 1.
     bool _channel1_broadcast_enabled;
+
+    // --- CV-Auto Broadcast State ---
+    // A map to store the CVs for the CV-Auto broadcast.
+    std::map<uint32_t, uint8_t> _cvs;
+    // An iterator to keep track of the next CV to send.
+    std::map<uint32_t, uint8_t>::iterator _cv_auto_iterator;
+    // A flag to indicate if the CV-Auto broadcast is active.
+    bool _cv_auto_broadcast_active;
 };
 
 #endif // DECODER_STATE_MACHINE_H
