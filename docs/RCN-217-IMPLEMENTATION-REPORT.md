@@ -61,8 +61,10 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Test:** Verified end-to-end in `tests/RailcomTest/info_message_e2e`.
 
 *   **`BLOCK` (ID 13)**
-    *   **Status: Not Implemented**
-    *   **Details:** There is no support for this RCN-217 message type. The library uses ID 13 for `DECODER_STATE` as defined in the RCN-218 specification.
+    *   **Status: Implemented**
+    *   **Tx:** `RailcomTx::sendBlock` sends a 32-bit data payload.
+    *   **Rx:** `RailcomRx::parseMessage` distinguishes `BLOCK` (32-bit payload) from `DECODER_STATE` (44-bit payload) based on the total message length.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/RailcomTest.ino`.
 
 ## Stationary Decoder Features (STAT)
 

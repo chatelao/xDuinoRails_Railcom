@@ -175,6 +175,16 @@ test(end_to_end) {
   assertEqual(extMsg->type, 0x05);
   assertEqual(extMsg->position, 0xBC);
   hardware.clear();
+
+  // Verifies BLOCK (ID 13) message sending and parsing.
+  tx.sendBlock(0xABCDEF12);
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::BLOCK);
+  BlockMessage* blockMsg = static_cast<BlockMessage*>(msg);
+  assertEqual(blockMsg->data, 0xABCDEF12);
+  hardware.clear();
 }
 
 

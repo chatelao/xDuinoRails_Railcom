@@ -118,6 +118,10 @@ void RailcomTx::handleRerailingSearch(uint16_t address, uint32_t secondsSincePow
     sendDatagram(2, RailcomID::RERAIL, secondsSincePowerOn > MAX_RERAIL_SECONDS ? MAX_RERAIL_SECONDS : secondsSincePowerOn, 8);
 }
 
+void RailcomTx::sendBlock(uint32_t data) {
+    sendDatagram(2, RailcomID::BLOCK, data, 32);
+}
+
 void RailcomTx::sendServiceRequest(uint16_t accessoryAddress, bool isExtended) {
     if (accessoryAddress > MAX_ACCESSORY_ADDRESS) return;
     _hardware->queue_message(1, RailcomEncoding::encodeServiceRequest(accessoryAddress, isExtended));

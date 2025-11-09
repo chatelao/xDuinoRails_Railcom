@@ -26,6 +26,7 @@ enum class RailcomID {
     SRQ = 14, RERAIL = 14,
 
     // RCN-218
+    BLOCK = 13,
     DECODER_STATE = 13,
     DECODER_UNIQUE = 15
 };
@@ -104,6 +105,10 @@ struct RerailMessage : public RailcomMessage {
 struct SrqMessage : public RailcomMessage {
     uint16_t accessoryAddress;
     bool isExtended;
+};
+
+struct BlockMessage : public RailcomMessage {
+    uint32_t data;
 };
 
 // --- Constants ---
