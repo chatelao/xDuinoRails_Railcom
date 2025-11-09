@@ -209,6 +209,7 @@ void setup() {
   run_test(info_message_e2e);
   run_test(xf1_location_request_e2e);
   run_test(xf2_rerailing_search_broadcast_e2e);
+  run_test(xf3_cv_auto_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -507,6 +508,53 @@ test(rerailing_search_e2e) {
   assertEqual(static_cast<RerailMessage*>(msg)->counter, seconds);
 
   hardware.clear();
+}
+
+// Verifies that an XF3 command correctly starts and stops the CV-Auto broadcast.
+test(xf3_cv_auto_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  uint16_t address = 100;
+  // RailCom enabled
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, address, 0, 0b00001000);
+  RailcomRx rx(&hardware);
+  RailcomMessage* msg;
+
+  // --- 1. Trigger XF3 to START the broadcast ---
+  // DCC packet: 100 (Addr), DE (XF), 03 (XF3)
+  uint8_t dcc_data[] = {100, 0xDE, 0x03, 0};
+  DCCMessage dcc_msg(dcc_data, 4);
+  sm.handleDccPacket(dcc_msg);
+
+  // Verify no message is sent immediately
+  assertTrue(hardware.getQueuedMessages().empty());
+
+  // --- 2. Call task() to send the first CV ---
+  sm.task();
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::CV_AUTO);
+  assertEqual(static_cast<CvAutoMessage*>(msg)->cvAddress, 1);
+  assertEqual(static_cast<CvAutoMessage*>(msg)->cvValue, 10);
+  hardware.clear();
+
+  // --- 3. Call task() again for the second CV ---
+  sm.task();
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  msg = rx.read();
+  assertNotNull(msg);
+  assertEqual(msg->id, RailcomID::CV_AUTO);
+  assertEqual(static_cast<CvAutoMessage*>(msg)->cvAddress, 8);
+  assertEqual(static_cast<CvAutoMessage*>(msg)->cvValue, 155);
+  hardware.clear();
+
+  // --- 4. Trigger XF3 again to STOP the broadcast ---
+  sm.handleDccPacket(dcc_msg);
+
+  // --- 5. Call task() again and verify no message is sent ---
+  sm.task();
+  assertTrue(hardware.getQueuedMessages().empty());
 }
 
 // Verifies that sendDataSpace queues messages on the correct channels.
