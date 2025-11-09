@@ -57,6 +57,19 @@ DCCMessage createDccALogonAssignPacket(uint8_t handle, uint16_t address) {
     return DCCMessage(data, sizeof(data));
 }
 
+// Creates a DCC message for an accessory decoder.
+// See NMRA S-9.2.1
+DCCMessage createAccessoryDccMessage(uint16_t address, bool activate, uint8_t output) {
+    // Accessory addresses are mapped to a specific byte format.
+    // Address bits 1-6 are in the first byte.
+    // Address bits 7-9 are inverted and in the second byte.
+    uint8_t byte1 = 0b10000000 | ((address - 1) & 0b00111111);
+    uint8_t byte2 = 0b10001000 | (~(address >> 6) & 0b00000111) | (activate ? 0b00000001 : 0) | (output & 0b00000110);
+
+    uint8_t dcc_data[] = {byte1, byte2, (uint8_t)(byte1 ^ byte2)};
+    return DCCMessage(dcc_data, 3);
+}
+
 } // namespace MockDcc
 
 #endif // MOCK_DCC_H
