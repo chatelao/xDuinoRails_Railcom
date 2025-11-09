@@ -57,6 +57,10 @@ private:
     // Flag to control the address broadcast on Channel 1.
     bool _channel1_broadcast_enabled;
 
+    // --- RCN-218 Backoff State ---
+    uint8_t _backoff_counter;
+    uint8_t _backoff_value; // The current value to count down from
+
     // --- CV-Auto Broadcast State ---
     // A map to store the CVs for the CV-Auto broadcast.
     std::map<uint32_t, uint8_t> _cvs;
