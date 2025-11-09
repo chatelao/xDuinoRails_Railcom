@@ -1,6 +1,6 @@
-# RCN-217 Implementation Analysis Report
+# RCN-217 & RCN-218 Implementation Analysis Report
 
-This document details the implementation status of features from the RCN-217 specification within the RP2040 RailCom Arduino library.
+This document details the implementation status of features from the RCN-217 and RCN-218 specifications within the RP2040 RailCom Arduino library.
 
 ---
 
@@ -129,3 +129,15 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Details:** The `DecoderStateMachine` now automatically responds to `XF1` (location request), `XF2` (rerailing search), `XF3` (CV-Auto toggle), and standard accessory decoder commands. This provides a comprehensive set of responses for common DCC operations.
 
 ---
+
+## RailComPlus Features (RCN-218)
+
+*   **Automatic Logon & Registration**
+    *   **Status: Implemented**
+    *   **Details:** The `DecoderStateMachine` implements the full RCN-218 logon procedure, including responding to `LOGON_ENABLE`, sending `DECODER_UNIQUE`, and handling `LOGON_ASSIGN` to accept a new address. The collision avoidance backoff mechanism is also implemented.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/logon_procedure_e2e`, `logon_error_cases_e2e`, and `backoff_mechanism_e2e`.
+
+*   **Data Space Communication**
+    *   **Status: Implemented**
+    *   **Details:** The `DecoderStateMachine` can respond to DCC commands to read from Data Spaces. Dummy data for common use cases (Loco Name, Function Icons, Manufacturer Info) is implemented.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/data_space_request_e2e`.

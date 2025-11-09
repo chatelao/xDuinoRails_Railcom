@@ -93,21 +93,40 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
         uint16_t address = 0;
         uint8_t command = 0;
 
-        // Long address format: ADDR_H, ADDR_L, 0xDE, CMD
-        if (len == 4 && (data[0] & 0xC0) == 0xC0 && data[2] == 0xDE) {
+        // Long address format: ADDR_H, ADDR_L, CMD_BYTE, PAYLOAD
+        if (len == 4 && (data[0] & 0xC0) == 0xC0) {
             address = ((data[0] & 0x3F) << 8) | data[1];
-            command = data[3];
-            handled = true;
-        // Short address format: ADDR, 0xDE, CMD
-        } else if (len == 3 && (data[0] & 0x80) == 0 && data[1] == 0xDE) {
+            // RCN-217 Extended Function (XF)
+            if (data[2] == 0xDE && onExtendedFunction) {
+                command = data[3];
+                handled = true;
+                onExtendedFunction(address, command);
+            // RCN-218 Data Space Read
+            } else if (data[2] == 0xED && onDataSpaceRead) {
+                uint8_t dataSpaceNum = (data[3] >> 4) & 0x0F;
+                uint8_t startAddr = data[3] & 0x0F;
+                handled = true;
+                onDataSpaceRead(address, dataSpaceNum, startAddr);
+            }
+        // Short address format: ADDR, CMD_BYTE, PAYLOAD
+        } else if (len == 3 && (data[0] & 0x80) == 0) {
             address = data[0];
-            command = data[2];
-            handled = true;
+            // RCN-217 Extended Function (XF)
+            if (data[1] == 0xDE && onExtendedFunction) {
+                command = data[2];
+                handled = true;
+                onExtendedFunction(address, command);
+            // RCN-218 Data Space Read
+            } else if (data[1] == 0xED && onDataSpaceRead) {
+                uint8_t dataSpaceNum = (data[2] >> 4) & 0x0F;
+                uint8_t startAddr = data[2] & 0x0F;
+                handled = true;
+                onDataSpaceRead(address, dataSpaceNum, startAddr);
+            }
         }
 
         if (handled) {
             if (response_sent) *response_sent = true;
-            onExtendedFunction(address, command);
         }
     }
 }

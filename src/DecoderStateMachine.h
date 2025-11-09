@@ -7,6 +7,7 @@
 
 #include "RailcomDccParser.h"
 #include <map>
+#include <vector>
 #include <iterator>
 
 enum class DecoderType {
@@ -68,6 +69,10 @@ private:
     std::map<uint32_t, uint8_t>::iterator _cv_auto_iterator;
     // A flag to indicate if the CV-Auto broadcast is active.
     bool _cv_auto_broadcast_active;
+
+    // --- RCN-218 Data Space Storage ---
+    // A map to store the data for various data spaces.
+    std::map<uint8_t, std::vector<uint8_t>> _data_spaces;
 };
 
 #endif // DECODER_STATE_MACHINE_H

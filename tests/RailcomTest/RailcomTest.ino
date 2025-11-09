@@ -238,6 +238,7 @@ void setup() {
   run_test(boundary_value_e2e);
   run_test(logon_error_cases_e2e);
   run_test(backoff_mechanism_e2e);
+  run_test(data_space_request_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -491,6 +492,88 @@ test(dynamic_channel1_management) {
   // We expect NO broadcast this time.
   sm.handleDccPacket(other_loco_msg);
   assertTrue(hardware.getQueuedMessages().empty());
+}
+
+/**
+ * @brief Verifies that a DCC Data Space Read command triggers the correct Data Space response.
+ * @see RCN-218, Section 4.3
+ */
+test(data_space_request_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  uint16_t address = 4097;
+  uint16_t manufacturerId = 0x0ABC;
+  uint32_t productId = 0x12345678;
+
+  // RailCom enabled
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, address, 0, 0b00001000, manufacturerId, productId);
+
+  // --- Simulate a DCC Data Space Read for Data Space 5 (Loco Name) ---
+  // Address: 4097 (0x1001 -> DCC bytes 0xD0, 0x01)
+  // Command: 0xED (Data Space Ops)
+  // Payload: 0x50 (Data Space 5, Start Addr 0)
+  uint8_t dcc_data[] = {0xD0, 0x01, 0xED, 0x50, 0};
+  DCCMessage dcc_msg(dcc_data, 5);
+  sm.handleDccPacket(dcc_msg);
+
+  // --- Verify the Response ---
+  // The response should be a Data Space message on Channel 2.
+  // We will check the raw bytes sent by the Tx side.
+  assertTrue(hardware.getQueuedMessages().count(2));
+  assertTrue(!hardware.getQueuedMessages().count(1));
+
+  // Expected data from constructor: { 'D', 'B', ' ', 'C', 'l', 'a', 's', 's', ' ', '2', '1', '8' }
+  // Length = 12 bytes
+  std::vector<uint8_t> expected_data_full = { 'D', 'B', ' ', 'C', 'l', 'a', 's', 's', ' ', '2', '1', '8' };
+
+  // Calculate the expected CRC.
+  // CRC is calculated over [length, data...], initialized with data space number (5).
+  std::vector<uint8_t> crc_buffer;
+  crc_buffer.push_back(expected_data_full.size());
+  crc_buffer.insert(crc_buffer.end(), expected_data_full.begin(), expected_data_full.end());
+  uint8_t expected_crc = RailcomEncoding::crc8(crc_buffer.data(), crc_buffer.size(), 5);
+
+  // The final raw bytes sent are the 4-of-8 encoded version of [length, data..., crc]
+  std::vector<uint8_t> expected_raw_bytes;
+  expected_raw_bytes.push_back(RailcomEncoding::encode4of8(expected_data_full.size()));
+  for (uint8_t byte : expected_data_full) {
+    expected_raw_bytes.push_back(RailcomEncoding::encode4of8(byte));
+  }
+  expected_raw_bytes.push_back(RailcomEncoding::encode4of8(expected_crc));
+
+  // The sent bytes on Ch2 should match our calculated raw bytes.
+  const auto& sent_bytes = hardware.getQueuedMessages().at(2);
+  assertEqual(sent_bytes.size(), expected_raw_bytes.size());
+  for (size_t i = 0; i < sent_bytes.size(); ++i) {
+    assertEqual(sent_bytes[i], expected_raw_bytes[i]);
+  }
+  hardware.clear();
+
+  // --- Simulate a DCC Data Space Read with startAddr = 3 ---
+  uint8_t dcc_data_partial[] = {0xD0, 0x01, 0xED, 0x53, 0}; // Addr 4097, DS 5, startAddr 3
+  DCCMessage dcc_msg_partial(dcc_data_partial, 5);
+  sm.handleDccPacket(dcc_msg_partial);
+
+  // Expected partial data: { 'C', 'l', 'a', 's', 's', ' ', '2', '1', '8' }
+  // Length = 9 bytes
+  std::vector<uint8_t> expected_data_partial = { 'C', 'l', 'a', 's', 's', ' ', '2', '1', '8' };
+  crc_buffer.clear();
+  crc_buffer.push_back(expected_data_partial.size());
+  crc_buffer.insert(crc_buffer.end(), expected_data_partial.begin(), expected_data_partial.end());
+  expected_crc = RailcomEncoding::crc8(crc_buffer.data(), crc_buffer.size(), 5);
+
+  expected_raw_bytes.clear();
+  expected_raw_bytes.push_back(RailcomEncoding::encode4of8(expected_data_partial.size()));
+  for (uint8_t byte : expected_data_partial) {
+    expected_raw_bytes.push_back(RailcomEncoding::encode4of8(byte));
+  }
+  expected_raw_bytes.push_back(RailcomEncoding::encode4of8(expected_crc));
+
+  const auto& sent_bytes_partial = hardware.getQueuedMessages().at(2);
+  assertEqual(sent_bytes_partial.size(), expected_raw_bytes.size());
+  for (size_t i = 0; i < sent_bytes_partial.size(); ++i) {
+    assertEqual(sent_bytes_partial[i], sent_bytes_partial[i]);
+  }
 }
 
 void loop() {
