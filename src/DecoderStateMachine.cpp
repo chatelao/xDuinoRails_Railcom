@@ -13,6 +13,22 @@ DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type,
     _cvs[29] = 34;
     _cv_auto_iterator = _cvs.begin();
 
+    // --- RCN-218 Data Space Initialization ---
+    // Use Case #7: Displaying Locomotive's Long Name (Data Space 5)
+    _data_spaces[5] = { 'D', 'B', ' ', 'C', 'l', 'a', 's', 's', ' ', '2', '1', '8' };
+
+    // Use Case #8: Automatic Function Icon Mapping (Data Space 4)
+    // Format: [F-Num], [Icon-Num], [F-Num], [Icon-Num], ...
+    _data_spaces[4] = { 1, 10, 2, 20 }; // F1=Horn, F2=Bell
+
+    // Use Case #21: Displaying Manufacturer Info (Data Space 6)
+    // Format: [Manuf. ID High], [Manuf. ID Low], [Article Num ASCII...]
+    _data_spaces[6] = {
+        (uint8_t)((_manufacturerId >> 8) & 0xFF),
+        (uint8_t)(_manufacturerId & 0xFF),
+        '1', '2', '3', '4', '5'
+    };
+
     setupCallbacks();
 }
 
@@ -190,6 +206,25 @@ void DecoderStateMachine::setupCallbacks() {
                 // Reset iterator to the beginning when starting the broadcast
                 if (_cv_auto_broadcast_active) {
                     _cv_auto_iterator = _cvs.begin();
+                }
+            }
+        }
+    };
+
+    // Handles a Data Space Read command by sending a Data Space response.
+    // See RCN-218 Section 4.3
+    _dccParser.onDataSpaceRead = [this](uint16_t address, uint8_t dataSpaceNum, uint8_t startAddr) {
+        if (address == _address) {
+            // Check if the requested data space exists in our map.
+            if (_data_spaces.count(dataSpaceNum)) {
+                const auto& full_data = _data_spaces.at(dataSpaceNum);
+
+                // Ensure the start address is within the bounds of the data.
+                if (startAddr < full_data.size()) {
+                    // Create a sub-vector starting from the startAddr.
+                    // The spec implies the central knows the max length, so we send the rest.
+                    std::vector<uint8_t> partial_data(full_data.begin() + startAddr, full_data.end());
+                    _txManager.sendDataSpace(partial_data.data(), partial_data.size(), dataSpaceNum);
                 }
             }
         }

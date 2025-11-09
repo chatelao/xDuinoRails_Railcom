@@ -52,6 +52,12 @@ public:
     // @param command The extended command number (e.g., XF1).
     std::function<void(uint16_t address, uint8_t command)> onExtendedFunction;
 
+    // Called when a Data Space Read command is received.
+    // @param address The address of the decoder.
+    // @param dataSpaceNum The number of the data space to read from.
+    // @param startAddr The starting address within the data space.
+    std::function<void(uint16_t address, uint8_t dataSpaceNum, uint8_t startAddr)> onDataSpaceRead;
+
     void parse(const DCCMessage& msg, bool* response_sent = nullptr);
 };
 
