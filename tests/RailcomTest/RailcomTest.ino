@@ -208,6 +208,7 @@ void setup() {
   run_test(info1_cycle_e2e);
   run_test(info_message_e2e);
   run_test(xf1_location_request_e2e);
+  run_test(xf2_rerailing_search_broadcast_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -592,5 +593,48 @@ test(xf1_location_request_e2e) {
   railcomMsg = rx.read();
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::EXT);
+  hardware.clear();
+}
+
+// Verifies that a broadcast XF2 command triggers the rerailing search response.
+test(xf2_rerailing_search_broadcast_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  // RailCom enabled, use a long address for the test
+  uint16_t address = 4097;
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, address, 0b00000011, 0b00001010);
+  RailcomRx rx(&hardware);
+
+  // Per RCN-217 5.2.3, the command is "XF2 aus" to broadcast address 0.
+  // DCC packet: 00 (Broadcast Addr), DE (XF), 02 (XF2 aus)
+  uint8_t dcc_data[] = {0x00, 0xDE, 0x02, 0};
+  DCCMessage msg(dcc_data, 4);
+  sm.handleDccPacket(msg);
+
+  // Verify that the correct three-part message is sent on channel 2
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  assertTrue(hardware.getQueuedMessages().count(2)); // Should be on channel 2
+  assertTrue(!hardware.getQueuedMessages().count(1)); // Should NOT be on channel 1
+
+  // 1. ADR_HIGH
+  RailcomMessage* railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::ADR_HIGH);
+  assertEqual(static_cast<AdrMessage*>(railcomMsg)->address, (address >> 8) & 0x3F);
+
+  // 2. ADR_LOW
+  railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::ADR_LOW);
+  assertEqual(static_cast<AdrMessage*>(railcomMsg)->address, address & 0xFF);
+
+  // 3. RERAIL (TIME)
+  railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::RERAIL);
+  // We can't easily assert the time value, so we just check the type.
+  // The actual time will depend on how long the test takes to run.
+  assertTrue(static_cast<RerailMessage*>(railcomMsg)->counter >= 0);
+
   hardware.clear();
 }
