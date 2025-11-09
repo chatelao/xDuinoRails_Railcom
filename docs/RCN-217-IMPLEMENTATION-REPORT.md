@@ -123,7 +123,7 @@ This document details the implementation status of features from the RCN-217 spe
     *   **Test:** Verified in `tests/RailcomTest/dynamic_channel1_management`.
 
 *   **Handling of Specific DCC Commands (XF1, XF2, etc.)**
-    *   **Status: Not Implemented**
-    *   **Details:** The library provides functions to send RailCom messages *in response* to events, but it does not include the DCC parsing logic to recognize and react to the specific extended function commands (like `XF1` for location request or `XF2` for rerailing search) that trigger these responses. This logic is left to the user's application/sketch.
+    *   **Status: Partially Implemented (XF1)**
+    *   **Details:** The `DecoderStateMachine` now automatically responds to an `XF1` (request for location information) DCC command by sending an `EXT` message on RailCom Channel 2. The DCC parsing logic for other extended function commands is not yet implemented.
 
 ---

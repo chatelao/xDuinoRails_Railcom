@@ -197,6 +197,7 @@ void setup() {
   run_test(data_space_e2e);
   run_test(info1_cycle_e2e);
   run_test(info_message_e2e);
+  run_test(xf1_location_request_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -537,5 +538,49 @@ test(info_message_e2e) {
   assertEqual(infoMsg->speed, speed);
   assertEqual(infoMsg->motorLoad, motorLoad);
   assertEqual(infoMsg->statusFlags, statusFlags);
+  hardware.clear();
+}
+
+// Verifies that an XF1 command triggers an EXT response.
+test(xf1_location_request_e2e) {
+  MockRailcomHardware hardware;
+  RailcomTx tx(&hardware);
+  // RailCom enabled, long address format
+  DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 4097, 0b00000011, 0b00001010);
+  RailcomRx rx(&hardware);
+
+  // --- Test with Long Address ---
+  // Simulate DCC XF1 command: C0 01 (Addr), DE (XF), 01 (XF1)
+  // Note: The address part for a long address is (0xC000 | address).
+  // So for address 4097 (0x1001), the bytes are 0xD0, 0x01.
+  uint8_t dcc_data_long[] = {0xD0, 0x01, 0xDE, 0x01, 0};
+  DCCMessage msg_long(dcc_data_long, 5);
+  sm.handleDccPacket(msg_long);
+
+  // Verify that an EXT message with dummy values (0, 0) is sent on channel 2
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  RailcomMessage* railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::EXT);
+  ExtMessage* extMsg = static_cast<ExtMessage*>(railcomMsg);
+  assertEqual(extMsg->type, 0);
+  assertEqual(extMsg->position, 0);
+  // Verify it was sent on channel 2
+  assertTrue(hardware.getQueuedMessages().count(2));
+  assertTrue(!hardware.getQueuedMessages().count(1));
+  hardware.clear();
+
+  // --- Test with Short Address ---
+  DecoderStateMachine sm_short(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00001010);
+  // Simulate DCC XF1 command: 64 (Addr 100), DE (XF), 01 (XF1)
+  uint8_t dcc_data_short[] = {100, 0xDE, 0x01, 0};
+  DCCMessage msg_short(dcc_data_short, 4);
+  sm_short.handleDccPacket(msg_short);
+
+  // Verify that an EXT message is sent again
+  hardware.setRxBuffer(hardware.getQueuedMessages());
+  railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::EXT);
   hardware.clear();
 }
