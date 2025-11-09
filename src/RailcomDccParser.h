@@ -47,6 +47,11 @@ public:
     // @param state The state of the function.
     std::function<void(uint16_t address, uint8_t function, bool state)> onFunction;
 
+    // Called when an extended function command (XF) is received.
+    // @param address The address of the decoder.
+    // @param command The extended command number (e.g., XF1).
+    std::function<void(uint16_t address, uint8_t command)> onExtendedFunction;
+
     void parse(const DCCMessage& msg, bool* response_sent = nullptr);
 };
 

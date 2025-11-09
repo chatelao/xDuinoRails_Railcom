@@ -126,4 +126,18 @@ void DecoderStateMachine::setupCallbacks() {
             _txManager.sendAck();
         }
     };
+
+    // Handles an extended function command by sending an appropriate response.
+    // For XF1 (location request), we send an EXT message.
+    // See RCN-217 Section 7.2
+    _dccParser.onExtendedFunction = [this](uint16_t address, uint8_t command) {
+        if (address == _address) {
+            // XF1 is the command for "request for location information"
+            if (command == 0x01) {
+                // Send a dummy EXT message with type 0 and position 0.
+                // In a real application, these values would come from sensors.
+                _txManager.sendExt(0, 0);
+            }
+        }
+    };
 }

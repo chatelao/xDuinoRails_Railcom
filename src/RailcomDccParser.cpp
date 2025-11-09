@@ -87,5 +87,27 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
         uint8_t function = data[1] & 0x1F;
         bool state = (data[2] >> 5) & 1;
         onFunction(address, function, state);
+    // See RCN-212 Section 2.3.6 for extended function commands
+    } else if (onExtendedFunction) {
+        bool handled = false;
+        uint16_t address = 0;
+        uint8_t command = 0;
+
+        // Long address format: ADDR_H, ADDR_L, 0xDE, CMD
+        if (len == 4 && (data[0] & 0xC0) == 0xC0 && data[2] == 0xDE) {
+            address = ((data[0] & 0x3F) << 8) | data[1];
+            command = data[3];
+            handled = true;
+        // Short address format: ADDR, 0xDE, CMD
+        } else if (len == 3 && (data[0] & 0x80) == 0 && data[1] == 0xDE) {
+            address = data[0];
+            command = data[2];
+            handled = true;
+        }
+
+        if (handled) {
+            if (response_sent) *response_sent = true;
+            onExtendedFunction(address, command);
+        }
     }
 }
