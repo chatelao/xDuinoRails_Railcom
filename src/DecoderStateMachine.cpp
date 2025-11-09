@@ -128,11 +128,21 @@ void DecoderStateMachine::setupCallbacks() {
     };
 
     // Handles an extended function command by sending an appropriate response.
-    // For XF1 (location request), we send an EXT message.
-    // See RCN-217 Section 7.2
+    // See RCN-217 Section 4.3.1 and 5.2.3
     _dccParser.onExtendedFunction = [this](uint16_t address, uint8_t command) {
+        // XF2 (Rerailing Search) is a broadcast command sent to address 0.
+        // See RCN-217 Section 5.2.3
+        if (command == 0x02 && address == 0) {
+            // Respond with address and time since power-on.
+            // In a real application, `millis()` would be replaced with a timer
+            // that is reset on power-on.
+            _txManager.handleRerailingSearch(_address, millis() / 1000);
+            return; // Explicitly return to avoid falling through to addressed commands
+        }
+
         if (address == _address) {
             // XF1 is the command for "request for location information"
+            // See RCN-217 Section 5.3.1
             if (command == 0x01) {
                 // Send a dummy EXT message with type 0 and position 0.
                 // In a real application, these values would come from sensors.
