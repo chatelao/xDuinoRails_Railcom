@@ -40,7 +40,6 @@ jobs:
           SKETCHES=(
             "examples/AccessoryDecoderDummy"
             "examples/AccessoryDecoderNmra"
-            "examples/CommandStation"
             "examples/FunctionDecoderDummy"
             "examples/LocomotiveDecoderDummy"
             "examples/LocomotiveDecoderNmra"
