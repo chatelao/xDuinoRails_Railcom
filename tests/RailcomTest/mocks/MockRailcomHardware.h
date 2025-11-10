@@ -8,16 +8,13 @@
 class MockRailcomHardware : public RailcomHardware {
 public:
     // --- Methods to control the mock ---
-    void setRxBuffer(const std::map<uint8_t, std::vector<uint8_t>>& data) {
-        if (data.count(1)) _rxBuffer = data.at(1);
-        if (data.count(2)) {
-            _rxBuffer.insert(_rxBuffer.end(), data.at(2).begin(), data.at(2).end());
-        }
+    void setRxBuffer(const std::vector<uint8_t>& data) {
+        _rxBuffer = data;
     }
-    std::map<uint8_t, std::vector<uint8_t>> getQueuedMessages() { return _queuedMessages; }
+    std::vector<uint8_t> getSentBytes() { return _sentBytes; }
     void clear() {
         _rxBuffer.clear();
-        _queuedMessages.clear();
+        _sentBytes.clear();
     }
 
     // --- RailcomHardware implementation ---
@@ -25,12 +22,8 @@ public:
     void end() override {}
     void task() override {}
 
-    void send_dcc_with_cutout(const DCCMessage& dccMsg) override {
-        // For now, do nothing.
-    }
-
-    void queue_message(uint8_t channel, const std::vector<uint8_t>& message) override {
-        _queuedMessages[channel].insert(_queuedMessages[channel].end(), message.begin(), message.end());
+    void send_bytes(const std::vector<uint8_t>& bytes) override {
+        _sentBytes.insert(_sentBytes.end(), bytes.begin(), bytes.end());
     }
 
     int available() override {
@@ -48,7 +41,7 @@ public:
 
 private:
     std::vector<uint8_t> _rxBuffer;
-    std::map<uint8_t, std::vector<uint8_t>> _queuedMessages;
+    std::vector<uint8_t> _sentBytes;
 };
 
 #endif // MOCK_RAILCOM_HARDWARE_H

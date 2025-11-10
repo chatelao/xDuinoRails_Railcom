@@ -4,15 +4,15 @@
 #include "Railcom.h"
 #include "RailcomHardware.h"
 #include <vector>
+#include <queue>
 
 class RailcomTx {
 public:
     RailcomTx(RailcomHardware* hardware);
     void begin();
     void end();
-    void task();
 
-    void send_dcc_with_cutout(const DCCMessage& dccMsg);
+    void on_cutout_start(uint32_t elapsed_us = 0);
 
     // --- Vehicle Decoder (MOB) Functions ---
     void sendPomResponse(uint8_t cvValue);
@@ -50,6 +50,9 @@ private:
     uint8_t _address_alternator; // 0 for ADR_HIGH, 1 for ADR_LOW, 2 for INFO1
     bool _info1_enabled;
     uint8_t _info1_payload;
+
+    std::queue<std::vector<uint8_t>> _ch1_queue;
+    std::queue<std::vector<uint8_t>> _ch2_queue;
 };
 
 #endif // RAILCOM_TX_H

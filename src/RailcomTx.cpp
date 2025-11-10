@@ -1,6 +1,7 @@
 #include "RailcomTx.h"
 #include "RailcomEncoding.h"
 #include "RailcomProtocolDefs.h"
+#include "pico/time.h"
 #include <cstring>
 
 RailcomTx::RailcomTx(RailcomHardware* hardware)
@@ -15,16 +16,31 @@ void RailcomTx::end() {
     _hardware->end();
 }
 
-void RailcomTx::task() {
-    _hardware->task();
-}
+void RailcomTx::on_cutout_start(uint32_t elapsed_us) {
+    if (!_ch1_queue.empty()) {
+        const auto& msg = _ch1_queue.front();
+        _hardware->send_bytes(msg);
+        _ch1_queue.pop();
+    }
 
-void RailcomTx::send_dcc_with_cutout(const DCCMessage& dccMsg) {
-    _hardware->send_dcc_with_cutout(dccMsg);
+    if (elapsed_us < RAILCOM_CH2_DELAY_US) {
+        sleep_us(RAILCOM_CH2_DELAY_US - elapsed_us);
+    }
+
+    while (!_ch2_queue.empty()) {
+        const auto& msg = _ch2_queue.front();
+        _hardware->send_bytes(msg);
+        _ch2_queue.pop();
+    }
 }
 
 void RailcomTx::sendDatagram(uint8_t channel, RailcomID id, uint64_t payload, uint8_t payloadBits) {
-    _hardware->queue_message(channel, RailcomEncoding::encodeDatagram(id, payload, payloadBits));
+    auto encodedMsg = RailcomEncoding::encodeDatagram(id, payload, payloadBits);
+    if (channel == 1) {
+        _ch1_queue.push(encodedMsg);
+    } else {
+        _ch2_queue.push(encodedMsg);
+    }
 }
 
 void RailcomTx::sendPomResponse(uint8_t cvValue) {
@@ -40,8 +56,6 @@ void RailcomTx::sendInfo(uint16_t speed, uint8_t motorLoad, uint8_t statusFlags)
 }
 
 void RailcomTx::sendExt(uint8_t type, uint8_t position) {
-    // Per RCN-217, the type for EXT message is in the range 0-7.
-    // The payload format is 00 TTTT PPPP PPPP, where TTTT must be <= 0111.
     uint16_t payload = ((type & 0x07) << 8) | position;
     sendDatagram(2, RailcomID::EXT, payload, 14);
 }
@@ -124,7 +138,7 @@ void RailcomTx::sendBlock(uint32_t data) {
 
 void RailcomTx::sendServiceRequest(uint16_t accessoryAddress, bool isExtended) {
     if (accessoryAddress > MAX_ACCESSORY_ADDRESS) return;
-    _hardware->queue_message(1, RailcomEncoding::encodeServiceRequest(accessoryAddress, isExtended));
+    _ch1_queue.push(RailcomEncoding::encodeServiceRequest(accessoryAddress, isExtended));
 }
 
 void RailcomTx::sendStatus1(uint8_t status) {
@@ -170,26 +184,39 @@ void RailcomTx::sendDataSpace(const uint8_t* data, size_t len, uint8_t dataSpace
     memcpy(buffer + 1, data, len);
     uint8_t crc = RailcomEncoding::crc8(buffer, len + 1, dataSpaceNum);
     std::vector<uint8_t> encodedBytes;
-    for (size_t i = 0; i < len + 2; ++i) {
-        uint8_t chunk = (i == 0) ? header : ((i <= len) ? data[i-1] : crc);
-        uint8_t encoded = RailcomEncoding::encode4of8(chunk);
-        encodedBytes.push_back(encoded);
+    encodedBytes.reserve(len + 2);
+
+    // Encode header, data, and CRC using 4-of-8 encoding
+    encodedBytes.push_back(RailcomEncoding::encode4of8(header));
+    for (size_t i = 0; i < len; ++i) {
+        encodedBytes.push_back(RailcomEncoding::encode4of8(data[i]));
     }
-    _hardware->queue_message(1, std::vector<uint8_t>(encodedBytes.begin(), encodedBytes.begin() + 2));
-    _hardware->queue_message(2, std::vector<uint8_t>(encodedBytes.begin() + 2, encodedBytes.end()));
+    encodedBytes.push_back(RailcomEncoding::encode4of8(crc));
+
+    // Per RCN-218, Data Space messages are split across channels.
+    // The first two bytes go to Channel 1, the rest to Channel 2.
+    if (encodedBytes.size() >= 2) {
+        _ch1_queue.push(std::vector<uint8_t>(encodedBytes.begin(), encodedBytes.begin() + 2));
+        if (encodedBytes.size() > 2) {
+            _ch2_queue.push(std::vector<uint8_t>(encodedBytes.begin() + 2, encodedBytes.end()));
+        }
+    } else if (!encodedBytes.empty()) {
+        // Handle cases with less than 2 bytes, though unlikely for this message type.
+        _ch1_queue.push(encodedBytes);
+    }
 }
 
 void RailcomTx::sendAck() {
     std::vector<uint8_t> ackBytes = { RAILCOM_ACK1, RAILCOM_ACK2 };
-    _hardware->queue_message(1, ackBytes);
+    _ch1_queue.push(ackBytes);
     ackBytes = { RAILCOM_ACK1, RAILCOM_ACK2, RAILCOM_ACK1, RAILCOM_ACK2 };
-    _hardware->queue_message(2, ackBytes);
+    _ch2_queue.push(ackBytes);
 }
 
 void RailcomTx::sendNack() {
     std::vector<uint8_t> nackBytes = { RAILCOM_NACK, RAILCOM_NACK };
-    _hardware->queue_message(1, nackBytes);
+    _ch1_queue.push(nackBytes);
     nackBytes = { RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK };
-    _hardware->queue_message(2, nackBytes);
+    _ch2_queue.push(nackBytes);
 }
 

@@ -14,9 +14,11 @@ public:
     virtual void end() = 0;
     virtual void task() = 0;
 
-    virtual void send_dcc_with_cutout(const DCCMessage& dccMsg) = 0;
-
-    virtual void queue_message(uint8_t channel, const std::vector<uint8_t>& message) = 0;
+    /**
+     * @brief Sends a vector of raw, 4-of-8 encoded RailCom bytes over the hardware interface.
+     * @param bytes The raw bytes to be sent. These are expected to be already encoded.
+     */
+    virtual void send_bytes(const std::vector<uint8_t>& bytes) = 0;
 
     virtual int available() = 0;
     virtual int read() = 0;

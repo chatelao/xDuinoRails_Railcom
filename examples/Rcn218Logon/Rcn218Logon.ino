@@ -10,7 +10,8 @@ const uint32_t PRODUCT_ID = 0x456789AB;
 const uint8_t CV28 = 0b00000011; // Enable both channels
 const uint8_t CV29 = 0b00001010; // Enable RailCom
 
-RP2040RailcomHardware railcomHardware(uart0, 0, 2, 1);
+// Hardware setup for UART
+RP2040RailcomHardware railcomHardware(uart0, 0, 1); // UART TX on GP0, UART RX on GP1
 RailcomTx railcomTx(&railcomHardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, CV28, CV29, MANUFACTURER_ID, PRODUCT_ID);
 
@@ -23,7 +24,6 @@ void setup() {
 }
 
 void loop() {
-    railcomTx.task();
     // In a real application, you would parse incoming DCC messages from the track
     // and pass them to stateMachine.handleDccPacket().
     // For this example, we will manually simulate the DCC-A logon sequence.
@@ -33,7 +33,7 @@ void loop() {
     uint8_t logon_enable[] = { RCN218::DCC_A_ADDRESS, RCN218::CMD_LOGON_ENABLE | 1, 0x12, 0x34, 0x56 };
     DCCMessage logon_msg(logon_enable, sizeof(logon_enable));
     stateMachine.handleDccPacket(logon_msg);
-    railcomTx.send_dcc_with_cutout(logon_msg);
+    railcomTx.on_cutout_start();
     delay(2000);
 
     // 2. Simulate SELECT
@@ -41,7 +41,7 @@ void loop() {
     uint8_t select[] = { RCN218::DCC_A_ADDRESS, RCN218::CMD_SELECT | 1, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xFC };
     DCCMessage select_msg(select, sizeof(select));
     stateMachine.handleDccPacket(select_msg);
-    railcomTx.send_dcc_with_cutout(select_msg);
+    railcomTx.on_cutout_start();
     delay(2000);
 
     // 3. Simulate LOGON_ASSIGN
@@ -49,12 +49,13 @@ void loop() {
     uint8_t logon_assign[] = { RCN218::DCC_A_ADDRESS, RCN218::CMD_LOGON_ASSIGN | 1, 0x23, 0x45, 0x67, 0x89, 0xAB, (DECODER_ADDRESS >> 8), (DECODER_ADDRESS & 0xFF) };
     DCCMessage assign_msg(logon_assign, sizeof(logon_assign));
     stateMachine.handleDccPacket(assign_msg);
-    railcomTx.send_dcc_with_cutout(assign_msg);
+    railcomTx.on_cutout_start();
     delay(2000);
 
     Serial.println("Logon sequence complete. Decoder is now registered.");
     while(1) {
-        railcomTx.task();
-        // Now the decoder would respond to normal DCC commands for its address
+        // Now the decoder would respond to normal DCC commands for its address.
+        // The loop is halted here for simplicity.
+        tight_loop_contents();
     }
 }
