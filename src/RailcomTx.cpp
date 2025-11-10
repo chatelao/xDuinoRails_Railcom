@@ -16,14 +16,16 @@ void RailcomTx::end() {
     _hardware->end();
 }
 
-void RailcomTx::on_cutout_start() {
+void RailcomTx::on_cutout_start(uint32_t elapsed_us) {
     if (!_ch1_queue.empty()) {
         const auto& msg = _ch1_queue.front();
         _hardware->send_bytes(msg);
         _ch1_queue.pop();
     }
 
-    sleep_us(RAILCOM_CH2_DELAY_US);
+    if (elapsed_us < RAILCOM_CH2_DELAY_US) {
+        sleep_us(RAILCOM_CH2_DELAY_US - elapsed_us);
+    }
 
     while (!_ch2_queue.empty()) {
         const auto& msg = _ch2_queue.front();

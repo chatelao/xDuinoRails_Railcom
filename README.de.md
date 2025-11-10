@@ -4,24 +4,24 @@
 
 An Arduino library for encoding and decoding RailCom messages on the RP2040, compliant with the RCN-217 specification.
 
-## Architecture and Scope
+## Architektur und Abgrenzungen
 
-This project provides a library for RailCom® communication for digital model railways. The library is divided into two main components with clearly defined roles:
+Dieses Projekt stellt eine Bibliothek zur Verfügung, die die RailCom®-Kommunikation für Digitale Modellbahnen ermöglicht. Die Bibliothek ist in zwei Hauptkomponenten unterteilt, deren Rollen klar voneinander abgegrenzt sind:
 
-### RailcomRx (Receiver)
+### RailcomRx (Empfänger)
 
--   **Scope:** The `RailcomRx` class is intended for use in a **command station** or a dedicated **RailCom detector**.
--   **Tasks:** Its main task is to receive and parse RailCom messages sent by decoders on the track.
--   **Limitations:** `RailcomRx` is **not** responsible for generating the DCC signal or the "cutout" (the powerless gap in the DCC signal) required for RailCom transmission. These tasks must be handled by the parent application (e.g., the command station's firmware). `RailcomRx` expects to receive the corresponding DCC message in the format of the `NmraDcc` library to understand the context of the received RailCom message.
+-   **Anwendungsbereich:** Die `RailcomRx`-Klasse ist für den Einsatz in einer **Zentrale** oder einem dedizierten **RailCom-Detektor** vorgesehen.
+-   **Aufgaben:** Ihre Hauptaufgabe ist das Empfangen und Parsen von RailCom-Nachrichten, die von Decodern auf dem Gleis gesendet werden.
+-   **Abgrenzung:** `RailcomRx` ist **nicht** für die Erzeugung des DCC-Signals oder des für die RailCom-Übertragung notwendigen "Cutouts" (der stromlosen Lücke im DCC-Signal) verantwortlich. Diese Aufgaben müssen von der übergeordneten Anwendung (z.B. der Firmware der Zentrale) übernommen werden. `RailcomRx` erwartet, die zugehörige DCC-Mitteilung im Format der `NmraDcc`-Bibliothek zu erhalten, um den Kontext der empfangenen RailCom-Nachricht zu verstehen.
 
-### RailcomTx (Transmitter)
+### RailcomTx (Sender)
 
--   **Scope:** The `RailcomTx` class is designed for use in a **vehicle or accessory decoder**.
--   **Tasks:** Its sole task is to prepare and send RailCom response messages.
--   **Limitations:** `RailcomTx` is **not** responsible for decoding DCC signals, motor control, or controlling functions and other decoder features. The decoder's application logic must provide `RailcomTx` with the last received DCC message and the exact start time of the cutout. The library then sends the prepared RailCom messages.
+-   **Anwendungsbereich:** Die `RailcomTx`-Klasse ist für den Einsatz in einem **Fahrzeug- oder Zubehördecoder** konzipiert.
+-   **Aufgaben:** Ihre einzige Aufgabe ist das Vorbereiten und Versenden von RailCom-Antwortnachrichten.
+-   **Abgrenzung:** `RailcomTx` ist **nicht** für die Decodierung von DCC-Signalen, die Motorsteuerung oder die Ansteuerung von Funktionen und anderer Decoderfunktionen zuständig. Die Anwendungslogik des Decoders muss `RailcomTx` die letzte empfangene DCC-Mitteilung sowie den exakten Startzeitpunkt des Cutouts mitteilen. Daraufhin versendet die Bibliothek die vorbereiteten RailCom-Nachrichten.
 
 ```
-DCC Command Station (Microcontroller)    Decoder (Microcontroller)
+DCC Zentrale (Mikrocontroller)        Decoder (Mikrocontroller)
 +----------------------+                 +--------------------+
 |                      |                 |                    |
 |    DCC_TX_PIN ------->----------------->------ DCC_RX_PIN   |
@@ -29,18 +29,18 @@ DCC Command Station (Microcontroller)    Decoder (Microcontroller)
 |                      |                 |                    |
 | RC_CUTOUT_PIN ------->-------          |                    |
 | RC_RX_PIN ===========<=================<====== RC_TX_PIN    |
-|    (RailCom Signal)  |                 | (RailCom Signal)   |
+|    (  RailCom Signal)|                 | (RailCom Signal)   |
 |                      |                 |                    |
 +----------------------+                 +--------------------+
 ```
 
 ## Features
 
--   **High-Level API:** `RailcomTx` (for decoders) and `RailcomRx` (for detectors/command stations) classes simplify the creation, sending, and parsing of RCN-217 messages.
--   **Asynchronous Sending:** Uses a message queue to prepare messages and send them at the correct time (during the cutout).
--   **Decoder State Machine:** Includes a `DecoderStateMachine` class to demonstrate realistic response logic for decoders.
--   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
--   **Web-based Tool:** A [web-based tool](https://chatelao.github.io/xDuinoRails_Railcom/index.html) for decoding RailCom messages.
+-   **High-Level API:** `RailcomTx` (für Decoder) und `RailcomRx` (für Detektoren/Zentralen) Klassen vereinfachen das Erstellen, Senden und Parsen von RCN-217 Nachrichten.
+-   **Asynchrones Senden:** Verwendet eine nachrichten-warteschlange, um Nachrichten vorzubereiten und sie zum exakt richtigen Zeitpunkt (während des Cutouts) zu senden.
+-   **Decoder State Machine:** Beinhaltet eine `DecoderStateMachine`-Klasse, um eine realitätsnahe Antwortlogik für Decoder zu demonstrieren.
+-   **Umfassende Beispiele:** Beinhaltet `Dummy`- und `NmraDcc`-basierte Beispiele für verschiedene Decoder-Typen.
+-   **Web-basiertes Werkzeug:** Ein [web-basiertes Werkzeug](https://chatelao.github.io/xDuinoRails_Railcom/index.html) zum Dekodieren von RailCom-Nachrichten.
 
 ## Real-World Use Cases
 

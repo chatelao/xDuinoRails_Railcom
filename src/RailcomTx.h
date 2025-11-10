@@ -12,7 +12,7 @@ public:
     void begin();
     void end();
 
-    void on_cutout_start();
+    void on_cutout_start(uint32_t elapsed_us = 0);
 
     // --- Vehicle Decoder (MOB) Functions ---
     void sendPomResponse(uint8_t cvValue);
