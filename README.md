@@ -1,5 +1,7 @@
 # RP2040 RailCom Library
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11454/badge)](https://www.bestpractices.dev/projects/11454)
+
 An Arduino library for encoding and decoding RailCom messages on the RP2040, compliant with the RCN-217 specification.
 
 ```
