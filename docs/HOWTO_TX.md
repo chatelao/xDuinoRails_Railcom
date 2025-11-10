@@ -2,6 +2,15 @@
 
 This guide explains how to wire a Seeed Xiao RP2040 and run a minimal software example to create a RailCom-enabled locomotive decoder.
 
+## The Role of the PIO Pin
+
+A common point of confusion is the role of the PIO pin. The RailCom specification requires a "cutout" in the DCC signal, a brief period where the track is unpowered, allowing the decoder to transmit its message.
+
+- The **`RailcomTx` library does not create the physical cutout on the high-power DCC rails itself.**
+- Instead, it generates a precise **logic-level control signal** on the specified PIO pin (D7 in the example).
+- This control signal is intended to be connected to a DCC booster or command station that is capable of creating the actual cutout on the track.
+- The library then sends the RailCom message on the UART TX pin during the time it asserts the cutout signal.
+
 ## Wiring
 
 The following wiring is required to connect the Seeed Xiao RP2040 to your DCC track to send RailCom messages.
@@ -13,16 +22,21 @@ The following wiring is required to connect the Seeed Xiao RP2040 to your DCC tr
 **Connections:**
 1.  Connect the DCC signal from your command station to one of the track rails.
 2.  Connect the other track rail to the GND pin on the Seeed Xiao RP2040.
-3.  Connect the DCC signal rail through a 1kΩ resistor to the TX pin of the Seeed Xiao RP2040's UART0 (Pin D6/GPIO0). This pin will be used to send the RailCom signal.
+3.  Connect the DCC signal rail through a 1kΩ resistor to the TX pin of the Seeed Xiao RP2040's UART0 (Pin D6/GPIO0). This is the RailCom message transmission pin.
+4.  Connect the PIO pin (Pin D7/GPIO1) to the cutout control input of your DCC booster. This pin outputs the cutout control signal.
 
 **Diagram:**
 
 ```
-               ┌───────────────┐
-DCC Signal ----│ 1kΩ Resistor  ├---- (TX) D6/GPIO0 on Xiao RP2040
-               └───────────────┘
-
-Track GND -------------------------- GND on Xiao RP2040
+                                  ┌────────────────────┐
+DCC Booster Cutout Control Input ─┤ D7/GPIO1 (PIO Pin) │
+                                  │                    │
+               ┌───────────────┐  │                    │
+DCC Signal ----│ 1kΩ Resistor  ├--┤ D6/GPIO0 (TX Pin)  │
+               └───────────────┘  │   Seeed Xiao       │
+                                  │      RP2040        │
+Track GND ------------------------┤ GND                │
+                                  └────────────────────┘
 ```
 
 **Note:** This is a very basic circuit for demonstration purposes. A real-world decoder would have a more robust circuit including opto-isolation and a full bridge rectifier.
@@ -41,9 +55,12 @@ This example demonstrates how to initialize the `RailcomTx` library and send a R
 // Define the locomotive address
 const uint16_t LOCO_ADDRESS = 3;
 
-// Initialize the RailcomTx library on UART0, using D6 as the TX pin and D7 for the PIO cutout signal.
-// The PIO pin is used internally by the library to generate the cutout.
-RailcomTx railcomTx(uart0, 0, 1); // UART instance, TX Pin (GPIO0 -> D6), PIO Pin (GPIO1 -> D7)
+// Initialize the RailcomTx library.
+// - uart0: The UART instance to use for sending RailCom messages.
+// - TX Pin (GPIO0 -> D6): The pin connected to the DCC rail for transmitting the RailCom signal.
+// - PIO Pin (GPIO1 -> D7): The pin that will output a logic-level signal to control the DCC cutout.
+//   This signal should be connected to a DCC booster that can create the physical cutout.
+RailcomTx railcomTx(uart0, 0, 1);
 
 // Initialize the Decoder State Machine
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
