@@ -1,7 +1,23 @@
+/**
+ * @file DecoderStateMachine.cpp
+ * @brief Implementation of the DecoderStateMachine class.
+ */
 #include "DecoderStateMachine.h"
 
 #include <Arduino.h>
 
+/**
+ * @brief Constructs the DecoderStateMachine.
+ * @details Initializes member variables, sets up dummy data for testing purposes
+ *          (CVs and Data Spaces), and registers the callbacks for the DCC parser.
+ * @param txManager Reference to the RailcomTx object.
+ * @param type The type of the decoder.
+ * @param address The primary address.
+ * @param cv28 Configuration Variable 28.
+ * @param cv29 Configuration Variable 29.
+ * @param manufacturerId Manufacturer ID for RCN-218.
+ * @param productId Product ID for RCN-218.
+ */
 DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type, uint16_t address, uint8_t cv28, uint8_t cv29, uint16_t manufacturerId, uint32_t productId)
     : _txManager(txManager), _type(type), _address(address), _cv28(cv28), _cv29(cv29),
       _manufacturerId(manufacturerId), _productId(productId), _logonState(LogonState::IDLE), _accessory_state(0), _channel1_broadcast_enabled(true),
@@ -32,6 +48,14 @@ DecoderStateMachine::DecoderStateMachine(RailcomTx& txManager, DecoderType type,
     setupCallbacks();
 }
 
+/**
+ * @brief Processes an incoming DCC packet.
+ * @details First, it checks CV29 to ensure RailCom is enabled. Then, it passes
+ *          the message to the internal DCC parser, which triggers the appropriate
+ *          callbacks. It also manages the Channel 1 address broadcast, disabling
+ *          it once the decoder is directly addressed to reduce network congestion.
+ * @param msg The DCCMessage to process.
+ */
 void DecoderStateMachine::handleDccPacket(const DCCMessage& msg) {
     // According to NMRA S-9.2.2, CV29, Bit 3 enables/disables RailCom.
     // If RailCom is not enabled, do not process any packets.
@@ -58,6 +82,12 @@ void DecoderStateMachine::handleDccPacket(const DCCMessage& msg) {
     }
 }
 
+/**
+ * @brief Handles periodic background tasks.
+ * @details This function is responsible for the automatic CV broadcast feature.
+ *          When active, it iterates through a map of CVs and sends one
+ *          CV_AUTO message per call.
+ */
 void DecoderStateMachine::task() {
     if (!_cv_auto_broadcast_active) {
         return;
@@ -75,7 +105,19 @@ void DecoderStateMachine::task() {
     _cv_auto_iterator++;
 }
 
+/**
+ * @brief Sets up all the lambda function callbacks for the RailcomDccParser.
+ * @details This is where the core logic of the decoder is defined. Each callback
+ *          corresponds to a specific DCC command and defines what RailCom message(s)
+ *          should be sent in response.
+ */
 void DecoderStateMachine::setupCallbacks() {
+    /**
+     * @brief Callback for RCN-218 Logon Enable command.
+     * @details Initiates the logon process and sends the decoder's unique ID.
+     *          Implements a simple collision avoidance backoff mechanism.
+     * @see RCN-218, Chapter 3
+     */
     _dccParser.onLogonEnable = [this](uint8_t group, uint16_t zid, uint8_t sessionId) {
         if (_logonState == LogonState::IDLE) {
             _logonState = LogonState::WAITING_FOR_LOGON;
@@ -94,6 +136,11 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
+    /**
+     * @brief Callback for RCN-218 Select command.
+     * @details Responds to a selection command during the logon process.
+     * @see RCN-218, Chapter 3
+     */
     _dccParser.onSelect = [this](uint16_t manufacturerId, uint32_t productId, uint8_t subCmd, const uint8_t* data, size_t len) {
         if (manufacturerId == _manufacturerId && productId == _productId) {
             if (_logonState == LogonState::IN_SINGULATION) {
@@ -104,6 +151,11 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
+    /**
+     * @brief Callback for RCN-218 Logon Assign command.
+     * @details Finalizes the logon process by accepting the new address and sending the decoder state.
+     * @see RCN-218, Chapter 3
+     */
     _dccParser.onLogonAssign = [this](uint16_t manufacturerId, uint32_t productId, uint16_t address) {
         if (manufacturerId == _manufacturerId && productId == _productId) {
             if (_logonState == LogonState::ANNOUNCED) {
@@ -116,10 +168,13 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // RCN-217 Callbacks
+    // --- RCN-217 Callbacks ---
 
-    // Handles a POM Read CV command by sending a POM response with the CV value.
-    // See RCN-217 Section 5.1.1
+    /**
+     * @brief Handles a POM Read CV command.
+     * @details Sends a POM response with the (dummy) value of the requested CV.
+     * @see RCN-217, 5.1.1
+     */
     _dccParser.onPomReadCv = [this](uint16_t cv, uint16_t address) {
         if (address == _address) {
             uint8_t value = 42; // Dummy value for the requested CV
@@ -127,8 +182,11 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // Handles a POM Write CV command by sending a POM response with the new CV value.
-    // See RCN-217 Section 5.1.2
+    /**
+     * @brief Handles a POM Write CV command.
+     * @details Sends a POM response echoing the value that was written.
+     * @see RCN-217, 5.1.2
+     */
     _dccParser.onPomWriteCv = [this](uint16_t cv, uint8_t value, uint16_t address) {
         if (address == _address) {
             // Here you would typically write the CV value to memory
@@ -136,8 +194,11 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // Handles a POM Write Bit command by sending a POM response with the new CV value.
-    // See RCN-217 Section 5.1.3
+    /**
+     * @brief Handles a POM Write Bit command.
+     * @details Sends a POM response with the new, modified value of the CV.
+     * @see RCN-217, 5.1.3
+     */
     _dccParser.onPomWriteBit = [this](uint16_t cv, uint8_t bit, uint8_t value, uint16_t address) {
         if (address == _address) {
             // Here you would typically write the CV bit to memory
@@ -151,8 +212,12 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // Handles an accessory command by updating the accessory state and sending a status response.
-    // See RCN-217 Section 6.3 and 6.4
+    /**
+     * @brief Handles an accessory decoder command.
+     * @details Updates the internal state of the accessory and sends the appropriate
+     *          status message (STAT1 or STAT4) based on the decoder type.
+     * @see RCN-217, 6.3 & 6.4
+     */
     _dccParser.onAccessory = [this](uint16_t address, bool activate, uint8_t output) {
         if (address == _address) {
             if (activate) {
@@ -169,8 +234,11 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // Handles a function command by sending an ACK.
-    // See RCN-212 Section 2.3.5
+    /**
+     * @brief Handles a standard function command.
+     * @details Sends a simple ACK in response.
+     * @see RCN-212, 2.3.5
+     */
     _dccParser.onFunction = [this](uint16_t address, uint8_t function, bool state) {
          if (address == _address) {
             // Here you would typically handle the function command
@@ -178,8 +246,12 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // Handles an extended function command by sending an appropriate response.
-    // See RCN-217 Section 4.3.1 and 5.2.3
+    /**
+     * @brief Handles an extended function (XF) command.
+     * @details Implements logic for Rerailing Search (XF2), Request for Location (XF1),
+     *          and toggling the CV-Auto broadcast (XF3).
+     * @see RCN-217, 4.3.1, 5.2.3, 5.3.1, 5.7
+     */
     _dccParser.onExtendedFunction = [this](uint16_t address, uint8_t command) {
         // XF2 (Rerailing Search) is a broadcast command sent to address 0.
         // See RCN-217 Section 5.2.3
@@ -211,8 +283,12 @@ void DecoderStateMachine::setupCallbacks() {
         }
     };
 
-    // Handles a Data Space Read command by sending a Data Space response.
-    // See RCN-218 Section 4.3
+    /**
+     * @brief Handles a Data Space Read command.
+     * @details Retrieves the requested data from the internal data space map
+     *          and sends it in a Data Space response message.
+     * @see RCN-218, 4.3
+     */
     _dccParser.onDataSpaceRead = [this](uint16_t address, uint8_t dataSpaceNum, uint8_t startAddr) {
         if (address == _address) {
             // Check if the requested data space exists in our map.
