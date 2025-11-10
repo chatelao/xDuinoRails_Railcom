@@ -1,14 +1,14 @@
-#ifndef RAILCOM_HARDWARE_H
-#define RAILCOM_HARDWARE_H
+#ifndef RAILCOM_TX_HARDWARE_H
+#define RAILCOM_TX_HARDWARE_H
 
 #include <cstdint>
 #include <cstddef>
 #include <vector>
 #include "Railcom.h"
 
-class RailcomHardware {
+class RailcomTxHardware {
 public:
-    virtual ~RailcomHardware() = default;
+    virtual ~RailcomTxHardware() = default;
 
     virtual void begin() = 0;
     virtual void end() = 0;
@@ -19,9 +19,6 @@ public:
      * @param bytes The raw bytes to be sent. These are expected to be already encoded.
      */
     virtual void send_bytes(const std::vector<uint8_t>& bytes) = 0;
-
-    virtual int available() = 0;
-    virtual int read() = 0;
 };
 
-#endif // RAILCOM_HARDWARE_H
+#endif // RAILCOM_TX_HARDWARE_H
