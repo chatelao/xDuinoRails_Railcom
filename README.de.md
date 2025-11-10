@@ -40,7 +40,7 @@ DCC Zentrale (Mikrocontroller)        Decoder (Mikrocontroller)
 -   **Asynchrones Senden:** Verwendet eine nachrichten-warteschlange, um Nachrichten vorzubereiten und sie zum exakt richtigen Zeitpunkt (während des Cutouts) zu senden.
 -   **Decoder State Machine:** Beinhaltet eine `DecoderStateMachine`-Klasse, um eine realitätsnahe Antwortlogik für Decoder zu demonstrieren.
 -   **Umfassende Beispiele:** Beinhaltet `Dummy`- und `NmraDcc`-basierte Beispiele für verschiedene Decoder-Typen.
--   **Web-basiertes Werkzeug:** Ein [web-basiertes Werkzeug](https://chatelao.github.io/xDuinoRails_Railcom/index.html) zum Dekodieren von RailCom-Nachrichten.
+-   **Web-basiertes Werkzeug:** Ein [web-basiertes Werkzeug](https://chatelao.github.io/xDuinoRails_Railcom/tools/index.html) zum Dekodieren von RailCom-Nachrichten.
 
 ## Real-World Use Cases
 

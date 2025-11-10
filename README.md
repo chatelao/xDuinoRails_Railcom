@@ -40,7 +40,7 @@ DCC Command Station (Microcontroller)    Decoder (Microcontroller)
 -   **Asynchronous Sending:** Uses a message queue to prepare messages and send them at the correct time (during the cutout).
 -   **Decoder State Machine:** Includes a `DecoderStateMachine` class to demonstrate realistic response logic for decoders.
 -   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
--   **Web-based Tool:** A [web-based tool](https://chatelao.github.io/xDuinoRails_Railcom/index.html) for decoding RailCom messages.
+-   **Web-based Tool:** A [web-based tool](https://chatelao.github.io/xDuinoRails_Railcom/tools/index.html) for decoding RailCom messages.
 
 ## Real-World Use Cases
 
