@@ -231,7 +231,7 @@ void setup() {
   run_test(decoder_state_e2e);
   run_test(ack_nack_e2e);
   run_test(rerailing_search_e2e);
-  run_test(data_space_e2e);
+  run_test(data_space_e2e_full);
   run_test(info1_cycle_e2e);
   run_test(info_message_e2e);
   run_test(xf1_location_request_e2e);
@@ -750,38 +750,39 @@ test(xf3_cv_auto_e2e) {
 }
 
 /**
- * @brief Verifies the correct encoding of a Data Space message.
+ * @brief Verifies the full end-to-end transmission, reception, and parsing of a Data Space message.
  * @see RCN-218, Section 4.3
  */
-test(data_space_e2e) {
+test(data_space_e2e_full) {
   MockRailcomHardware hardware;
   RailcomTx tx(&hardware);
-  uint8_t data[] = {0x01, 0x02, 0x03}; // len=3
-  uint8_t dataSpaceNum = 1;
+  RailcomRx rx(&hardware);
+  uint8_t data[] = {0x01, 0x02, 0x03, 0xAA, 0xBB}; // len=5
+  uint8_t dataSpaceNum = 5;
 
-  // Manually calculate the expected CRC.
-  uint8_t crc_buffer[] = {0x03, 0x01, 0x02, 0x03};
-  uint8_t expected_crc = RailcomEncoding::crc8(crc_buffer, 4, dataSpaceNum);
-
-  std::vector<uint8_t> expected_bytes = {
-    RailcomEncoding::encode4of8(0x03), // header (length)
-    RailcomEncoding::encode4of8(0x01),
-    RailcomEncoding::encode4of8(0x02),
-    RailcomEncoding::encode4of8(0x03),
-    RailcomEncoding::encode4of8(expected_crc)
-  };
-
+  // 1. TX sends the data
   tx.sendDataSpace(data, sizeof(data), dataSpaceNum);
   tx.on_cutout_start();
 
-  auto sentBytes = hardware.getSentBytes();
-  assertEqual(sentBytes.size(), expected_bytes.size());
-  for (size_t i = 0; i < sentBytes.size(); ++i) {
-    assertEqual(sentBytes[i], expected_bytes[i]);
+  // 2. RX receives the data
+  hardware.setRxBuffer(hardware.getSentBytes());
+  rx.expectDataSpaceResponse(dataSpaceNum);
+  RailcomMessage* msg_raw = rx.read();
+
+  // 3. Verify the received data
+  assertNotNull(msg_raw);
+  DataSpaceMessage* msg = static_cast<DataSpaceMessage*>(msg_raw);
+
+  assertEqual(msg->dataSpaceNum, dataSpaceNum);
+  assertEqual(msg->len, sizeof(data));
+  assertTrue(msg->crc_ok);
+  for (size_t i = 0; i < sizeof(data); ++i) {
+    assertEqual(msg->data[i], data[i]);
   }
 
   hardware.clear();
 }
+
 
 /**
  * @brief Verifies the end-to-end transmission and reception of an INFO message.

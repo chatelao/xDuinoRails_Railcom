@@ -32,6 +32,11 @@ void RailcomRx::setContext(DecoderContext context) {
     _context = context;
 }
 
+void RailcomRx::expectDataSpaceResponse(uint8_t dataSpaceNum) {
+    _is_data_space_expected = true;
+    _expected_data_space_num = dataSpaceNum;
+}
+
 RailcomMessage* RailcomRx::read() {
     // Clear previous message
     if (_lastMessage != nullptr) {
@@ -41,8 +46,43 @@ RailcomMessage* RailcomRx::read() {
     _lastRawBytes.clear();
 
     if (read_raw_bytes(_lastRawBytes, 50)) {
-        _lastMessage = parseMessage(_lastRawBytes);
-        return _lastMessage;
+        if (_is_data_space_expected) {
+            _is_data_space_expected = false; // Consume the expectation
+            // Data Space messages have no ID, they are raw byte streams.
+            // The first byte is the length.
+            if (_lastRawBytes.empty()) return nullptr;
+
+            std::vector<uint8_t> decoded_payload;
+            for (uint8_t byte : _lastRawBytes) {
+                decoded_payload.push_back(RailcomEncoding::decode4of8(byte));
+            }
+
+            uint8_t len = decoded_payload[0];
+            if (len > MAX_DATA_SPACE_PAYLOAD || decoded_payload.size() != (size_t)len + 2) {
+                // Invalid length or size mismatch
+                return nullptr;
+            }
+
+            DataSpaceMessage* msg = new DataSpaceMessage();
+            msg->id = (RailcomID) -1; // Special ID for data space
+            msg->len = len;
+            memcpy(msg->data, decoded_payload.data() + 1, len);
+            msg->crc = decoded_payload.back();
+            msg->dataSpaceNum = _expected_data_space_num;
+
+            // Verify CRC
+            uint8_t crc_buffer[MAX_DATA_SPACE_PAYLOAD + 1];
+            crc_buffer[0] = len;
+            memcpy(crc_buffer + 1, msg->data, len);
+            uint8_t calculated_crc = RailcomEncoding::crc8(crc_buffer, len + 1, msg->dataSpaceNum);
+            msg->crc_ok = (calculated_crc == msg->crc);
+
+            _lastMessage = msg;
+            return msg;
+        } else {
+            _lastMessage = parseMessage(_lastRawBytes);
+            return _lastMessage;
+        }
     }
     return nullptr;
 }
@@ -60,6 +100,24 @@ void RailcomRx::print(Print& stream) {
         stream.print(buf);
     }
     stream.println();
+
+    // Handle Data Space as a special case because it has a special ID
+    if (_lastMessage->id == (RailcomID)-1) {
+        DataSpaceMessage* dsMsg = static_cast<DataSpaceMessage*>(_lastMessage);
+        stream.print("  ID: DATA_SPACE\n");
+        stream.printf("  Data Space Num: %u\n", dsMsg->dataSpaceNum);
+        stream.printf("  Length: %u\n", dsMsg->len);
+        stream.print("  Data: ");
+        for(int i=0; i<dsMsg->len; i++) {
+            char buf[4];
+            sprintf(buf, "%02X ", dsMsg->data[i]);
+            stream.print(buf);
+        }
+        stream.println();
+        stream.printf("  CRC: 0x%02X (Received)\n", dsMsg->crc);
+        stream.printf("  CRC OK: %s\n", dsMsg->crc_ok ? "Yes" : "No");
+        return;
+    }
 
     stream.println("Decoded data:");
     switch (_lastMessage->id) {

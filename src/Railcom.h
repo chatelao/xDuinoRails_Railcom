@@ -111,6 +111,15 @@ struct BlockMessage : public RailcomMessage {
     uint32_t data;
 };
 
+#define MAX_DATA_SPACE_PAYLOAD 16
+struct DataSpaceMessage : public RailcomMessage {
+    uint8_t len;
+    uint8_t data[MAX_DATA_SPACE_PAYLOAD];
+    uint8_t crc;
+    uint8_t dataSpaceNum; // From the DCC command, not the RailCom message itself
+    bool crc_ok;          // True if the received CRC matches the calculated one
+};
+
 // --- Constants ---
 #define RAILCOM_ACK1 0b11110000
 #define RAILCOM_ACK2 0b00001111

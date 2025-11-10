@@ -13,6 +13,7 @@ public:
     RailcomMessage* read();
     void setContext(DecoderContext context);
     void print(Print& stream);
+    void expectDataSpaceResponse(uint8_t dataSpaceNum);
 
 private:
     bool read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms);
@@ -22,6 +23,8 @@ private:
     RailcomMessage* _lastMessage = nullptr;
     uint8_t _lastAdrHigh = 0;
     DecoderContext _context = DecoderContext::UNKNOWN;
+    bool _is_data_space_expected = false;
+    uint8_t _expected_data_space_num = 0;
 };
 
 #endif // RAILCOM_RX_H
