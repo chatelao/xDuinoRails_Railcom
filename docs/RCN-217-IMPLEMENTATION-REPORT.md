@@ -139,5 +139,6 @@ This document details the implementation status of features from the RCN-217 and
 
 *   **Data Space Communication**
     *   **Status: Implemented**
-    *   **Details:** The `DecoderStateMachine` can respond to DCC commands to read from Data Spaces. Dummy data for common use cases (Loco Name, Function Icons, Manufacturer Info) is implemented.
-    *   **Test:** Verified end-to-end in `tests/RailcomTest/data_space_request_e2e`.
+    *   **Tx:** The `DecoderStateMachine` can respond to DCC commands to read from Data Spaces. `RailcomTx::sendDataSpace` correctly encodes the payload and CRC.
+    *   **Rx:** `RailcomRx` can be put into a special mode via `expectDataSpaceResponse()` to parse the raw byte stream of a Data Space message, validate its CRC, and return the payload.
+    *   **Test:** Verified fully end-to-end in `tests/RailcomTest/data_space_e2e_full`.
