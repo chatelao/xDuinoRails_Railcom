@@ -19,8 +19,8 @@ void RailcomTx::task() {
     _hardware->task();
 }
 
-void RailcomTx::send_dcc_with_cutout(const DCCMessage& dccMsg) {
-    _hardware->send_dcc_with_cutout(dccMsg);
+void RailcomTx::on_cutout_start() {
+    _hardware->on_cutout_start();
 }
 
 void RailcomTx::sendDatagram(uint8_t channel, RailcomID id, uint64_t payload, uint8_t payloadBits) {
@@ -192,4 +192,3 @@ void RailcomTx::sendNack() {
     nackBytes = { RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK };
     _hardware->queue_message(2, nackBytes);
 }
-

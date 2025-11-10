@@ -25,8 +25,8 @@ public:
     void end() override {}
     void task() override {}
 
-    void send_dcc_with_cutout(const DCCMessage& dccMsg) override {
-        // For now, do nothing.
+    void on_cutout_start() override {
+        // For now, do nothing. In a real test, this might set a flag.
     }
 
     void queue_message(uint8_t channel, const std::vector<uint8_t>& message) override {

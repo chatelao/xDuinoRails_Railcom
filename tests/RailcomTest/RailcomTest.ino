@@ -381,6 +381,7 @@ test(logon_procedure_e2e) {
   logon_enable_data[5] = logon_enable_data[0] ^ logon_enable_data[1] ^ logon_enable_data[2] ^ logon_enable_data[3] ^ logon_enable_data[4];
   DCCMessage logon_enable_msg(logon_enable_data, sizeof(logon_enable_data));
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
 
   // --- 2. Decoder responds with DECODER_UNIQUE ---
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -410,6 +411,7 @@ test(logon_procedure_e2e) {
   logon_assign_data[9] = checksum;
   DCCMessage logon_assign_msg(logon_assign_data, sizeof(logon_assign_data));
   sm.handleDccPacket(logon_assign_msg);
+  tx.on_cutout_start();
 
   // --- 4. Decoder responds with DECODER_STATE ---
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -434,6 +436,7 @@ test(decoder_state_machine_e2e) {
   uint8_t dcc_data[] = {0, 100, 0b11100100, 1, 0}; // Address 100, Read CV 1
   DCCMessage msg(dcc_data, 5);
   sm.handleDccPacket(msg);
+  tx.on_cutout_start();
 
   // Verify that a POM response with the dummy value 42 is sent
   RailcomRx rx(&hardware);
@@ -458,6 +461,7 @@ test(cv_config_disables_railcom) {
   uint8_t dcc_data[] = {0, 100, 0b01100000, 0};
   DCCMessage msg(dcc_data, 4);
   sm.handleDccPacket(msg);
+  tx.on_cutout_start();
 
   // Verify that NO message was sent
   assertTrue(hardware.getQueuedMessages().empty());
@@ -478,6 +482,7 @@ test(dynamic_channel1_management) {
   uint8_t other_loco_data[] = {0, 101, 0b01100000, 0};
   DCCMessage other_loco_msg(other_loco_data, 4);
   sm.handleDccPacket(other_loco_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().count(1)); // Should broadcast address
   hardware.clear();
 
@@ -486,11 +491,13 @@ test(dynamic_channel1_management) {
   uint8_t my_loco_data[] = {0, 100, 0b01100000, 0};
   DCCMessage my_loco_msg(my_loco_data, 4);
   sm.handleDccPacket(my_loco_msg);
+  tx.on_cutout_start();
   hardware.clear(); // Clear any messages sent in response to this packet
 
   // 3. Simulate another packet for the OTHER locomotive.
   // We expect NO broadcast this time.
   sm.handleDccPacket(other_loco_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty());
 }
 
@@ -515,6 +522,7 @@ test(data_space_request_e2e) {
   uint8_t dcc_data[] = {0xD0, 0x01, 0xED, 0x50, 0};
   DCCMessage dcc_msg(dcc_data, 5);
   sm.handleDccPacket(dcc_msg);
+  tx.on_cutout_start();
 
   // --- Verify the Response ---
   // The response should be a Data Space message on Channel 2.
@@ -553,6 +561,7 @@ test(data_space_request_e2e) {
   uint8_t dcc_data_partial[] = {0xD0, 0x01, 0xED, 0x53, 0}; // Addr 4097, DS 5, startAddr 3
   DCCMessage dcc_msg_partial(dcc_data_partial, 5);
   sm.handleDccPacket(dcc_msg_partial);
+  tx.on_cutout_start();
 
   // Expected partial data: { 'C', 'l', 'a', 's', 's', ' ', '2', '1', '8' }
   // Length = 9 bytes
@@ -736,12 +745,14 @@ test(xf3_cv_auto_e2e) {
   uint8_t dcc_data[] = {100, 0xDE, 0x03, 0};
   DCCMessage dcc_msg(dcc_data, 4);
   sm.handleDccPacket(dcc_msg);
+  tx.on_cutout_start();
 
   // Verify no message is sent immediately
   assertTrue(hardware.getQueuedMessages().empty());
 
   // --- 2. Call task() to send the first CV ---
   sm.task();
+  tx.on_cutout_start();
   hardware.setRxBuffer(hardware.getQueuedMessages());
   msg = rx.read();
   assertNotNull(msg);
@@ -752,6 +763,7 @@ test(xf3_cv_auto_e2e) {
 
   // --- 3. Call task() again for the second CV ---
   sm.task();
+  tx.on_cutout_start();
   hardware.setRxBuffer(hardware.getQueuedMessages());
   msg = rx.read();
   assertNotNull(msg);
@@ -762,9 +774,11 @@ test(xf3_cv_auto_e2e) {
 
   // --- 4. Trigger XF3 again to STOP the broadcast ---
   sm.handleDccPacket(dcc_msg);
+  tx.on_cutout_start();
 
   // --- 5. Call task() again and verify no message is sent ---
   sm.task();
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty());
 }
 
@@ -863,6 +877,7 @@ test(xf1_location_request_e2e) {
   uint8_t dcc_data_long[] = {0xD0, 0x01, 0xDE, 0x01, 0};
   DCCMessage msg_long(dcc_data_long, 5);
   sm.handleDccPacket(msg_long);
+  tx.on_cutout_start();
 
   // Verify that an EXT message with dummy values (0, 0) is sent on channel 2
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -883,6 +898,7 @@ test(xf1_location_request_e2e) {
   uint8_t dcc_data_short[] = {100, 0xDE, 0x01, 0};
   DCCMessage msg_short(dcc_data_short, 4);
   sm_short.handleDccPacket(msg_short);
+  tx.on_cutout_start();
 
   // Verify that an EXT message is sent again
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -909,6 +925,7 @@ test(xf2_rerailing_search_broadcast_e2e) {
   uint8_t dcc_data[] = {0x00, 0xDE, 0x02, 0};
   DCCMessage msg(dcc_data, 4);
   sm.handleDccPacket(msg);
+  tx.on_cutout_start();
 
   // Verify that the correct three-part message is sent on channel 2
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -956,6 +973,7 @@ test(accessory_decoder_e2e) {
   // --- 1. Activate output 1 ---
   DCCMessage msg_on = MockDcc::createAccessoryDccMessage(address, true, 1);
   sm.handleDccPacket(msg_on);
+  tx.on_cutout_start();
 
   // Verify that a STAT4 message is sent with the correct bit set
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -968,6 +986,7 @@ test(accessory_decoder_e2e) {
   // --- 2. Deactivate output 1 ---
   DCCMessage msg_off = MockDcc::createAccessoryDccMessage(address, false, 1);
   sm.handleDccPacket(msg_off);
+  tx.on_cutout_start();
 
   // Verify that a STAT4 message is sent with the bit cleared
   hardware.setRxBuffer(hardware.getQueuedMessages());
@@ -1092,6 +1111,7 @@ test(logon_error_cases_e2e) {
   uint8_t logon_enable_data[] = { RCN218::DCC_A_ADDRESS, (uint8_t)RCN218::CMD_LOGON_ENABLE, 0, 0, 0, 0 };
   DCCMessage logon_enable_msg(logon_enable_data, sizeof(logon_enable_data));
   sm_wrong_id.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   hardware.clear(); // Clear the DECODER_UNIQUE response
 
   // Create a LOGON_ASSIGN command with a different (wrong) product ID
@@ -1110,6 +1130,7 @@ test(logon_error_cases_e2e) {
   DCCMessage logon_assign_wrong_id_msg(logon_assign_wrong_id_data, sizeof(logon_assign_wrong_id_data));
 
   sm_wrong_id.handleDccPacket(logon_assign_wrong_id_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty()); // Should NOT send a DECODER_STATE response
 
   // --- 2. Test LOGON_ASSIGN in wrong state (IDLE) ---
@@ -1130,6 +1151,7 @@ test(logon_error_cases_e2e) {
 
   // The state machine is still in IDLE state, so it should ignore the command.
   sm_wrong_state.handleDccPacket(logon_assign_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty()); // Should NOT send a DECODER_STATE response
 }
 
@@ -1147,28 +1169,34 @@ test(backoff_mechanism_e2e) {
 
   // 1. First LOGON_ENABLE: Decoder should respond.
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   assertTrue(!hardware.getQueuedMessages().empty());
   hardware.clear();
 
   // 2. Second LOGON_ENABLE (no assignment in between): Decoder should NOT respond (backoff=1).
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty());
 
   // 3. Third LOGON_ENABLE: Decoder should respond again (backoff counter is done).
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   assertTrue(!hardware.getQueuedMessages().empty());
   hardware.clear();
 
   // 4. Fourth LOGON_ENABLE: Should NOT respond (backoff=2).
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty());
 
   // 5. Fifth LOGON_ENABLE: Should NOT respond (backoff=2).
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   assertTrue(hardware.getQueuedMessages().empty());
 
   // 6. Sixth LOGON_ENABLE: Should respond again.
   sm.handleDccPacket(logon_enable_msg);
+  tx.on_cutout_start();
   assertTrue(!hardware.getQueuedMessages().empty());
   hardware.clear();
 }

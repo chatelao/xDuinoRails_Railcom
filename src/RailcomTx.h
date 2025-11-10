@@ -12,7 +12,7 @@ public:
     void end();
     void task();
 
-    void send_dcc_with_cutout(const DCCMessage& dccMsg);
+    void on_cutout_start();
 
     // --- Vehicle Decoder (MOB) Functions ---
     void sendPomResponse(uint8_t cvValue);

@@ -14,7 +14,7 @@ public:
     virtual void end() = 0;
     virtual void task() = 0;
 
-    virtual void send_dcc_with_cutout(const DCCMessage& dccMsg) = 0;
+    virtual void on_cutout_start() = 0;
 
     virtual void queue_message(uint8_t channel, const std::vector<uint8_t>& message) = 0;
 
