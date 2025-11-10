@@ -25,7 +25,8 @@ const uint8_t CV28 = 0b00000011; // Enable both channels
 // e.g., 0b00000010 (disable bit 3).
 const uint8_t CV29 = 0b00001010; // Enable RailCom, 28/128 speed steps, long address
 
-RP2040RailcomHardware hardware(uart0, 0, 1, 3); // RX pin 3 is a placeholder
+// RX pin 3 is a placeholder, as this example does not receive DCC.
+RP2040RailcomHardware hardware(uart0, 0, 3);
 RailcomTx railcomTx(&hardware);
 // Initialize the state machine with the decoder's address and CV configuration.
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, CV28, CV29);
@@ -41,14 +42,16 @@ void notifyDccSpeed(uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t Speed, DCC_DI
     uint8_t data[] = {addr_high, addr_low, cmd_byte, (uint8_t)(addr_high ^ addr_low ^ cmd_byte)};
     DCCMessage dcc_msg(data, sizeof(data));
     stateMachine.handleDccPacket(dcc_msg);
-    railcomTx.send_dcc_with_cutout(dcc_msg);
+    // In a real application, you would detect the RailCom cutout here and then call:
+    railcomTx.on_cutout_start();
   } else {
     uint8_t addr_byte = Addr;
     uint8_t cmd_byte = 0b01100000 | (Speed & 0x1F);
     uint8_t data[] = {addr_byte, cmd_byte, (uint8_t)(addr_byte ^ cmd_byte)};
     DCCMessage dcc_msg(data, sizeof(data));
     stateMachine.handleDccPacket(dcc_msg);
-    railcomTx.send_dcc_with_cutout(dcc_msg);
+    // In a real application, you would detect the RailCom cutout here and then call:
+    railcomTx.on_cutout_start();
   }
 }
 

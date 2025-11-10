@@ -14,7 +14,8 @@ const uint16_t LOCOMOTIVE_ADDRESS = 4098;
 const uint8_t CV28 = 0b00000011; // Enable both channels
 const uint8_t CV29 = 0b00001010; // Enable RailCom
 
-RP2040RailcomHardware hardware(uart0, 0, 1, 2); // RX pin 2 is a placeholder
+// RX pin 2 is a placeholder, as this example does not receive DCC.
+RP2040RailcomHardware hardware(uart0, 0, 2);
 RailcomTx railcomTx(&hardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCOMOTIVE_ADDRESS, CV28, CV29);
 
@@ -41,7 +42,8 @@ void loop() {
         // 2. Let the state machine decide what to queue
         stateMachine.handleDccPacket(dcc_msg);
 
-        // 3. Trigger the cutout to send the queued message
-        railcomTx.send_dcc_with_cutout(dcc_msg);
+        // 3. In a real decoder, the cutout would be detected after sending the DCC packet.
+        //    Here, we simulate that detection by calling on_cutout_start() directly.
+        railcomTx.on_cutout_start();
     }
 }

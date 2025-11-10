@@ -7,7 +7,8 @@
 #define DCC_PIN 2
 
 NmraDcc Dcc;
-RP2040RailcomHardware hardware(uart0, 1, 0, 3); // RX pin 3 is a placeholder
+// RX pin 3 is a placeholder, as this example does not receive DCC.
+RP2040RailcomHardware hardware(uart0, 1, 3);
 RailcomTx railcomTx(&hardware);
 
 // For this example, we'll let the NmraDcc library manage the address.
@@ -25,6 +26,9 @@ void notifyDccAccTurnoutOutput(uint16_t Addr, uint8_t Direction, uint8_t OutputP
   uint8_t data[] = {addr_high, cmd_byte, (uint8_t)(addr_high ^ cmd_byte)};
   DCCMessage dcc_msg(data, sizeof(data));
   stateMachine.handleDccPacket(dcc_msg);
+
+  // In a real application, you would detect the RailCom cutout here and then call:
+  // railcomTx.on_cutout_start();
 }
 
 void setup() {

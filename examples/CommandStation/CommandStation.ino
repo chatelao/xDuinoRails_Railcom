@@ -3,7 +3,7 @@
 #include "RailcomRx.h"
 #include "RP2040RailcomHardware.h"
 
-RP2040RailcomHardware hardware(uart0, 0, 1, 1);
+RP2040RailcomHardware hardware(uart0, 0, 1);
 RailcomTx railcomTx(&hardware);
 RailcomRx railcomRx(&hardware);
 
@@ -21,9 +21,9 @@ void parseCommand(String cmd) {
         int addr = cmd.substring(2, cmd.indexOf(' ', 2)).toInt();
         int cv = cmd.substring(cmd.indexOf(' ', 2) + 1).toInt();
 
-        uint8_t dcc_data[] = { (uint8_t)(addr >> 8), (uint8_t)addr, 0b11101100, (uint8_t)cv, 0};
-        DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
-        railcomTx.send_dcc_with_cutout(dcc_msg);
+        // This example does not send a real DCC message.
+        // It simulates the event by calling on_cutout_start() directly.
+        railcomTx.on_cutout_start();
     }
 }
 
@@ -31,7 +31,7 @@ void loop() {
     railcomTx.task();
 
     if (Serial.available() > 0) {
-        String input = Serial.readStringUntil('\\n');
+        String input = Serial.readStringUntil('\n');
         input.trim();
         parseCommand(input);
     }

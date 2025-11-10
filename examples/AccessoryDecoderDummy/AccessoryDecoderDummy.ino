@@ -7,7 +7,8 @@ const uint16_t ACCESSORY_ADDRESS = 100;
 const uint8_t CV28 = 0b00000011; // Enable both channels
 const uint8_t CV29 = 0b00001010; // Enable RailCom
 
-RP2040RailcomHardware hardware(uart0, 0, 1, 2); // RX pin 2 is a placeholder
+// RX pin 2 is a placeholder, as this example does not receive DCC.
+RP2040RailcomHardware hardware(uart0, 0, 2);
 RailcomTx railcomTx(&hardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::ACCESSORY, ACCESSORY_ADDRESS, CV28, CV29);
 
@@ -55,6 +56,9 @@ void loop() {
 
         DCCMessage dcc_msg(dcc_data, sizeof(dcc_data));
         stateMachine.handleDccPacket(dcc_msg);
-        railcomTx.send_dcc_with_cutout(dcc_msg);
+
+        // In a real decoder, the cutout would be detected after sending the DCC packet.
+        // Here, we simulate that detection by calling on_cutout_start() directly.
+        railcomTx.on_cutout_start();
     }
 }

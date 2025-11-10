@@ -3,7 +3,7 @@
 #include <RP2040RailcomHardware.h>
 
 // Use the default UART instance and pins for the Railcom hardware
-RP2040RailcomHardware railcomHardware(uart0, /*TX pin*/ 0, /*PIO pin*/ 2, /*RX pin*/ 1);
+RP2040RailcomHardware railcomHardware(uart0, /*TX pin*/ 0, /*RX pin*/ 1);
 RailcomRx railcomRx(&railcomHardware);
 
 void setup() {
