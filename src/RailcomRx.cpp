@@ -1,20 +1,42 @@
+/**
+ * @file RailcomRx.cpp
+ * @brief Implementation of the RailcomRx class for receiving and parsing RailCom messages.
+ */
 #include "RailcomRx.h"
 #include "RailcomEncoding.h"
 #include <cstring>
 #include "pico/stdlib.h"
 
+/**
+ * @brief Constructs a RailcomRx object.
+ * @param hardware A pointer to a RailcomHardware implementation.
+ */
 RailcomRx::RailcomRx(RailcomHardware* hardware)
     : _hardware(hardware) {}
 
+/**
+ * @brief Initializes the hardware for reception.
+ */
 void RailcomRx::begin() {
     _hardware->begin();
 }
 
+/**
+ * @brief A periodic task function, currently not used.
+ */
 void RailcomRx::task() {
     // task() is not used in the restored logic,
     // so this is intentionally left empty.
 }
 
+/**
+ * @brief Reads a sequence of raw bytes from the hardware.
+ * @details This is a private helper function that reads all available bytes from
+ *          the hardware buffer until it's empty, or until the timeout is reached.
+ * @param[out] buffer The vector to store the read bytes.
+ * @param timeout_ms The maximum time to wait for data.
+ * @return True if at least one byte was read, false otherwise.
+ */
 bool RailcomRx::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
     buffer.clear();
     uint32_t start = millis();
@@ -28,15 +50,35 @@ bool RailcomRx::read_raw_bytes(std::vector<uint8_t>& buffer, uint timeout_ms) {
     return !buffer.empty();
 }
 
+/**
+ * @brief Sets the decoder context for parsing ambiguous messages.
+ * @param context The decoder context (MOBILE or STATIONARY).
+ */
 void RailcomRx::setContext(DecoderContext context) {
     _context = context;
 }
 
+/**
+ * @brief Configures the receiver to expect a special Data Space message next.
+ * @param dataSpaceNum The expected data space number, used for CRC validation.
+ */
 void RailcomRx::expectDataSpaceResponse(uint8_t dataSpaceNum) {
     _is_data_space_expected = true;
     _expected_data_space_num = dataSpaceNum;
 }
 
+/**
+ * @brief Reads, parses, and returns the next available RailCom message.
+ * @details This is the main public method for receiving messages. It handles two main
+ *          cases:
+ *          1. If `expectDataSpaceResponse` was called, it uses a special parsing
+ *             logic for RCN-218 Data Space messages.
+ *          2. Otherwise, it uses the general `parseMessage` function for all
+ *             standard RCN-217 and RCN-218 messages.
+ *          The returned pointer is managed internally and will be deleted on the
+ *          next call to `read()`.
+ * @return A pointer to a parsed RailcomMessage, or nullptr if no valid message is received.
+ */
 RailcomMessage* RailcomRx::read() {
     // Clear previous message
     if (_lastMessage != nullptr) {
@@ -56,6 +98,8 @@ RailcomMessage* RailcomRx::read() {
             for (uint8_t byte : _lastRawBytes) {
                 decoded_payload.push_back(RailcomEncoding::decode4of8(byte));
             }
+
+            if (decoded_payload.empty()) return nullptr;
 
             uint8_t len = decoded_payload[0];
             if (len > MAX_DATA_SPACE_PAYLOAD || decoded_payload.size() != (size_t)len + 2) {
@@ -87,6 +131,10 @@ RailcomMessage* RailcomRx::read() {
     return nullptr;
 }
 
+/**
+ * @brief Prints a formatted, human-readable version of the last message to a Print stream.
+ * @param stream The Arduino Print stream (e.g., `Serial`) to write to.
+ */
 void RailcomRx::print(Print& stream) {
     if (_lastMessage == nullptr) {
         stream.println("No Railcom message received.");
@@ -151,7 +199,7 @@ void RailcomRx::print(Print& stream) {
             }
             break;
         }
-        case RailcomID::EXT: // Also covers STAT4
+        case RailcomID::EXT: // Also covers STAT4 and INFO1
             if (_lastRawBytes.size() * 6 - 4 == 14) { // EXT message has 14 payload bits -> 18 total bits -> 3 bytes
                 ExtMessage* msg = static_cast<ExtMessage*>(_lastMessage);
                 stream.print("  ID: EXT (3)\n");
@@ -232,6 +280,19 @@ void RailcomRx::print(Print& stream) {
     }
 }
 
+/**
+ * @brief Parses a vector of raw bytes into a specific RailcomMessage struct.
+ * @details This is the core parsing logic. It performs the following steps:
+ *          1. Decodes the 4-of-8 encoded bytes into a single 64-bit integer.
+ *          2. Extracts the 4-bit message ID from the start of the data.
+ *          3. Extracts the payload.
+ *          4. Uses a switch statement on the ID to create the appropriate message
+ *             struct and populate it with the payload data.
+ *          It handles messages with variable lengths and ambiguous IDs by checking
+ *          the total bit count and the current decoder context.
+ * @param buffer A constant reference to the vector of raw bytes to parse.
+ * @return A pointer to a newly allocated message struct, or nullptr if parsing fails.
+ */
 RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
     uint64_t decodedData = 0;
     int bitCount = 0;
@@ -248,38 +309,38 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
     uint64_t payload = decodedData & ((1ULL << (bitCount - 4)) - 1);
 
     switch (id) {
-        case RailcomID::POM: {
+        case RailcomID::POM: { // RCN-217, 5.2.1
             PomMessage* msg = new PomMessage();
             msg->id = id;
             msg->cvValue = payload;
             return msg;
         }
-        case RailcomID::ADR_HIGH: {
+        case RailcomID::ADR_HIGH: { // RCN-217, 5.2.2
             AdrMessage* msg = new AdrMessage();
             msg->id = id;
             // Per RCN-217 for long addresses, the address is in the lower 6 bits.
             msg->address = payload & 0x3F;
             return msg;
         }
-        case RailcomID::ADR_LOW: {
+        case RailcomID::ADR_LOW: { // RCN-217, 5.2.3
             AdrMessage* msg = new AdrMessage();
             msg->id = id;
             // The low part of a long address is the full 8-bit payload.
             msg->address = payload;
             return msg;
         }
-        case RailcomID::DYN: {
+        case RailcomID::DYN: { // RCN-217, 5.2.8
             DynMessage* msg = new DynMessage();
             msg->id = id;
             msg->subIndex = payload & 0x3F;
             msg->value = (payload >> 6) & 0xFF;
             return msg;
         }
-        case RailcomID::XPOM_0:
+        case RailcomID::XPOM_0: // RCN-217, 5.2.9
         case RailcomID::XPOM_1:
         case RailcomID::XPOM_2:
         case RailcomID::XPOM_3: {
-            if (bitCount == 36) { // XPOM message
+            if (bitCount == 36) { // XPOM message has 32 payload bits
                 XpomMessage* msg = new XpomMessage();
                 msg->id = id;
                 msg->sequence = static_cast<uint8_t>(id) - static_cast<uint8_t>(RailcomID::XPOM_0);
@@ -288,30 +349,30 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 msg->cvValues[2] = (payload >> 8) & 0xFF;
                 msg->cvValues[3] = payload & 0xFF;
                 return msg;
-            } else { // STAT2 message
+            } else { // STAT2 message (RCN-217, 5.2.9) has 8 payload bits
                 Stat2Message* msg = new Stat2Message();
                 msg->id = RailcomID::STAT2;
                 msg->status = payload;
                 return msg;
             }
         }
-        case RailcomID::INFO: { // Also STAT1
-            if (bitCount == 36 && _context == DecoderContext::MOBILE) {
+        case RailcomID::INFO: { // RCN-217, 5.2.5
+            if (bitCount == 36 && _context == DecoderContext::MOBILE) { // INFO message has 32 payload bits
                 InfoMessage* msg = new InfoMessage();
                 msg->id = RailcomID::INFO;
                 msg->speed = (payload >> 16) & 0xFFFF;
                 msg->motorLoad = (payload >> 8) & 0xFF;
                 msg->statusFlags = payload & 0xFF;
                 return msg;
-            } else { // STAT1 message (or default for context)
+            } else { // STAT1 message has 8 payload bits
                 Stat1Message* msg = new Stat1Message();
                 msg->id = RailcomID::STAT1;
                 msg->status = payload;
                 return msg;
             }
         }
-        case RailcomID::EXT: { // Also STAT4 and INFO1
-            if (bitCount == 18) { // EXT Message (currently no context needed)
+        case RailcomID::EXT: { // RCN-217, 5.2.4
+            if (bitCount == 18) { // EXT Message has 14 payload bits
                 ExtMessage* msg = new ExtMessage();
                 msg->id = RailcomID::EXT;
                 uint8_t type = (payload >> 8) & 0x0F;
@@ -321,7 +382,7 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 msg->position = payload & 0xFF;
                 return msg;
             } else { // INFO1 or STAT4 Message (8 payload bits)
-                if (_context == DecoderContext::MOBILE) {
+                if (_context == DecoderContext::MOBILE) { // INFO1
                     Info1Message* msg = new Info1Message();
                     msg->id = RailcomID::INFO1;
                     msg->on_track_direction_is_positive = (payload >> 0) & 1;
@@ -330,7 +391,7 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                     msg->is_in_consist = (payload >> 3) & 1;
                     msg->request_addressing = (payload >> 4) & 1;
                     return msg;
-                } else { // Default to STATIONARY or if UNKNOWN
+                } else { // STAT4 (Default for STATIONARY or UNKNOWN)
                     Stat4Message* msg = new Stat4Message();
                     msg->id = RailcomID::STAT4;
                     msg->status = payload;
@@ -338,20 +399,20 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 }
             }
         }
-        case RailcomID::ERROR: {
+        case RailcomID::ERROR: { // RCN-217, 5.2.7
             ErrorMessage* msg = new ErrorMessage();
             msg->id = id;
             msg->errorCode = payload;
             return msg;
         }
-        case RailcomID::TIME: {
+        case RailcomID::TIME: { // RCN-217, 5.2.6
             TimeMessage* msg = new TimeMessage();
             msg->id = id;
             msg->unit_is_second = (payload >> 7) & 0x01;
             msg->timeValue = payload & 0x7F;
             return msg;
         }
-        case RailcomID::CV_AUTO: {
+        case RailcomID::CV_AUTO: { // RCN-217, 5.2.11
             CvAutoMessage* msg = new CvAutoMessage();
             msg->id = id;
             msg->cvAddress = (payload >> 8) & 0xFFFFFF;
@@ -359,14 +420,14 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             return msg;
         }
         case RailcomID::DECODER_STATE: { // Also BLOCK
-            if (bitCount - 4 == 44) { // DECODER_STATE
+            if (bitCount - 4 == 44) { // DECODER_STATE (RCN-218, 4.2)
                 DecoderStateMessage* msg = new DecoderStateMessage();
                 msg->id = id;
                 msg->protocolCaps = (payload >> 8) & 0xFFFF;
                 msg->changeCount = (payload >> 24) & 0x0FFF;
                 msg->changeFlags = (payload >> 36) & 0xFF;
                 return msg;
-            } else if (bitCount - 4 == 32) { // BLOCK
+            } else if (bitCount - 4 == 32) { // BLOCK (RCN-218, 4.1)
                 BlockMessage* msg = new BlockMessage();
                 msg->id = RailcomID::BLOCK;
                 msg->data = payload;
@@ -374,7 +435,7 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             }
             return nullptr;
         }
-        case RailcomID::RERAIL: // and SRQ
+        case RailcomID::RERAIL: { // RCN-217, 5.2.12
             if (bitCount - 4 == 12) { // SRQ
                 SrqMessage* msg = new SrqMessage();
                 msg->id = RailcomID::SRQ;
@@ -387,7 +448,8 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
                 msg->counter = payload;
                 return msg;
             }
-        case RailcomID::DECODER_UNIQUE: {
+        }
+        case RailcomID::DECODER_UNIQUE: { // RCN-218, 4.3
             DecoderUniqueMessage* msg = new DecoderUniqueMessage();
             msg->id = id;
             msg->productId = payload & 0xFFFFFFFF;

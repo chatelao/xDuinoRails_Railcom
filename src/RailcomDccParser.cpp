@@ -1,5 +1,21 @@
+/**
+ * @file RailcomDccParser.cpp
+ * @brief Implementation of the RailcomDccParser class.
+ */
 #include "RailcomDccParser.h"
 
+/**
+ * @brief Parses a DCCMessage and invokes the appropriate callbacks.
+ * @details This function decodes the raw byte array from the DCCMessage. It checks for
+ *          various DCC command patterns, including RCN-218 DCC-A commands,
+ *          RCN-217 POM commands, accessory commands, and extended functions.
+ *          When a matching pattern is found, the corresponding std::function callback
+ *          is invoked with the parsed parameters.
+ * @param msg The DCCMessage to be parsed.
+ * @param[out] response_sent A pointer to a boolean that is set to true if a callback
+ *             is fired. This indicates to the caller that the DCC packet was
+ *             handled and likely triggered a RailCom response.
+ */
 void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
     const uint8_t* data = msg.getData();
     size_t len = msg.getLength();
@@ -7,6 +23,7 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
     if (len < 2) return;
 
     // RCN-218 DCC-A Protocol
+    // See RCN-218, Chapter 3 for command structures
     if (data[0] == RCN218::DCC_A_ADDRESS) {
         uint8_t cmd = data[1];
         if (cmd >= RCN218::CMD_LOGON_ENABLE && cmd < 0xF4) {
@@ -31,6 +48,7 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
                 onLogonAssign(manufacturerId, productId, address);
             }
         } else {
+             // See RCN-218, 5.2 for Data Space command structures
             switch (cmd) {
                 case RCN218::CMD_GET_DATA_START:
                     if (onGetDataStart) onGetDataStart();
@@ -51,43 +69,42 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
         return; // End of RCN-218 parsing
     }
 
-    // RCN-217 Parsing
-    // See RCN-217 Section 5.1 for POM command structure
+    // --- RCN-217 and NMRA S-9.2.1 Parsing ---
     uint16_t address = (data[0] << 8) | data[1];
 
     if (len >= 3) {
         uint8_t byte3 = data[2];
-        // Check for POM command: 111xxxxx
+        // Check for POM command pattern: 111xxxxx (NMRA S-9.2.1)
         if ((byte3 & 0b11100000) == 0b11100000) {
             if (response_sent) *response_sent = true;
             uint16_t cv = (byte3 & 0x1F) << 8 | data[3];
-            // Check for Read CV command: 111001xx
+            // Check for Read CV sub-command: 111001xx
             if ((byte3 & 0b00011100) == 0b00000100 && onPomReadCv) {
                  onPomReadCv(cv, address);
-            // Check for Write CV command: 111111xx
+            // Check for Write CV sub-command: 111111xx
             } else if ((byte3 & 0b00011100) == 0b00011100 && onPomWriteCv) {
                  onPomWriteCv(cv, data[4], address);
-            // Check for Write Bit command: 111110xx
+            // Check for Write Bit sub-command: 111110xx
             } else if ((byte3 & 0b00011100) == 0b00011000 && onPomWriteBit) {
                 uint8_t bit = data[4] & 0x07;
                 uint8_t value = (data[4] >> 3) & 1;
                 onPomWriteBit(cv, bit, value, address);
             }
         }
-    // See RCN-217 Section 6 for accessory decoder commands
-    } else if ((data[0] & 0b11000000) == 0b10000000 && len >= 2 && onAccessory) { // Accessory
+    // Check for Accessory Decoder Command pattern (NMRA S-9.2.1)
+    } else if ((data[0] & 0b11000000) == 0b10000000 && len >= 2 && onAccessory) {
         if (response_sent) *response_sent = true;
         address = 1 + (((~data[0]) & 0x3F) << 2) | ((data[1] >> 1) & 0x03);
         bool activate = (data[1] >> 3) & 1;
         uint8_t output = data[1] & 0x03;
         onAccessory(address, activate, output);
-    // See RCN-212 Section 2.3.5 for binary state control commands
+    // Check for Function Group Command pattern (NMRA S-9.2)
     } else if ((data[1] & 0b11010000) == 0b11010000 && onFunction) {
         if (response_sent) *response_sent = true;
         uint8_t function = data[1] & 0x1F;
         bool state = (data[2] >> 5) & 1;
         onFunction(address, function, state);
-    // See RCN-212 Section 2.3.6 for extended function commands
+    // Check for various extended commands (XF, Data Space)
     } else if (onExtendedFunction) {
         bool handled = false;
         uint16_t address = 0;
@@ -96,12 +113,12 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
         // Long address format: ADDR_H, ADDR_L, CMD_BYTE, PAYLOAD
         if (len == 4 && (data[0] & 0xC0) == 0xC0) {
             address = ((data[0] & 0x3F) << 8) | data[1];
-            // RCN-217 Extended Function (XF)
+            // RCN-217 Extended Function (XF), Command 0xDE
             if (data[2] == 0xDE && onExtendedFunction) {
                 command = data[3];
                 handled = true;
                 onExtendedFunction(address, command);
-            // RCN-218 Data Space Read
+            // RCN-218 Data Space Read, Command 0xED
             } else if (data[2] == 0xED && onDataSpaceRead) {
                 uint8_t dataSpaceNum = (data[3] >> 4) & 0x0F;
                 uint8_t startAddr = data[3] & 0x0F;
@@ -111,12 +128,12 @@ void RailcomDccParser::parse(const DCCMessage& msg, bool* response_sent) {
         // Short address format: ADDR, CMD_BYTE, PAYLOAD
         } else if (len == 3 && (data[0] & 0x80) == 0) {
             address = data[0];
-            // RCN-217 Extended Function (XF)
+            // RCN-217 Extended Function (XF), Command 0xDE
             if (data[1] == 0xDE && onExtendedFunction) {
                 command = data[2];
                 handled = true;
                 onExtendedFunction(address, command);
-            // RCN-218 Data Space Read
+            // RCN-218 Data Space Read, Command 0xED
             } else if (data[1] == 0xED && onDataSpaceRead) {
                 uint8_t dataSpaceNum = (data[2] >> 4) & 0x0F;
                 uint8_t startAddr = data[2] & 0x0F;
