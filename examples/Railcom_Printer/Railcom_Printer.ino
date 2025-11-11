@@ -1,9 +1,9 @@
 #include <Railcom.h>
 #include <RailcomRx.h>
-#include <RP2040RailcomHardware.h>
+#include <RP2040RailcomRxHardware.h>
 
 // Use the default UART instance and pins for the Railcom hardware
-RP2040RailcomHardware railcomHardware(uart0, /*TX pin*/ 0, /*PIO pin*/ 2, /*RX pin*/ 1);
+RP2040RailcomRxHardware railcomHardware(uart0, /*RX pin*/ 1);
 RailcomRx railcomRx(&railcomHardware);
 
 void setup() {

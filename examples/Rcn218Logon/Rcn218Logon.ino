@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "DecoderStateMachine.h"
-#include "RP2040RailcomHardware.h"
+#include "RP2040RailcomTxHardware.h"
 
 // --- Decoder Configuration ---
 const uint16_t DECODER_ADDRESS = 4098;
@@ -11,7 +11,7 @@ const uint8_t CV28 = 0b00000011; // Enable both channels
 const uint8_t CV29 = 0b00001010; // Enable RailCom
 
 // Hardware setup for UART
-RP2040RailcomHardware railcomHardware(uart0, 0, 1); // UART TX on GP0, UART RX on GP1
+RP2040RailcomTxHardware railcomHardware(uart0, 0); // UART TX on GP0
 RailcomTx railcomTx(&railcomHardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, DECODER_ADDRESS, CV28, CV29, MANUFACTURER_ID, PRODUCT_ID);
 

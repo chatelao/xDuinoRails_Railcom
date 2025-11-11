@@ -10,7 +10,7 @@
 #define RAILCOM_TX_H
 
 #include "Railcom.h"
-#include "RailcomHardware.h"
+#include "RailcomTxHardware.h"
 #include <vector>
 #include <queue>
 
@@ -28,7 +28,7 @@ public:
      * @brief Constructs a RailcomTx object.
      * @param hardware A pointer to a RailcomHardware implementation for physical layer communication.
      */
-    RailcomTx(RailcomHardware* hardware);
+    RailcomTx(RailcomTxHardware* hardware);
 
     /**
      * @brief Initializes the transmitter and underlying hardware.
@@ -241,7 +241,7 @@ private:
      */
     uint8_t buildInfo1Payload(const Info1Message& info1);
 
-    RailcomHardware* _hardware; ///< Pointer to the hardware abstraction layer.
+    RailcomTxHardware* _hardware; ///< Pointer to the hardware abstraction layer.
     uint8_t _address_alternator; ///< State machine for alternating ADR_HIGH, ADR_LOW, INFO1.
     bool _info1_enabled;         ///< Flag to enable/disable INFO1 broadcast.
     uint8_t _info1_payload;      ///< Cached payload for INFO1 messages.

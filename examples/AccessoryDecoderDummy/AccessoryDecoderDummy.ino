@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "RailcomTx.h"
-#include "RP2040RailcomHardware.h"
+#include "RP2040RailcomTxHardware.h"
 #include "DecoderStateMachine.h"
 
 // Note: This sketch is a dummy and does not actually send DCC packets.
@@ -12,7 +12,7 @@ const uint8_t CV28 = 0b00000011; // Enable both channels
 const uint8_t CV29 = 0b00001010; // Enable RailCom
 
 // Hardware setup for UART
-RP2040RailcomHardware hardware(uart0, 0, 1); // UART TX on GP0, UART RX on GP1
+RP2040RailcomTxHardware hardware(uart0, 0); // UART TX on GP0
 RailcomTx railcomTx(&hardware);
 DecoderStateMachine stateMachine(railcomTx, DecoderType::ACCESSORY, ACCESSORY_ADDRESS, CV28, CV29);
 

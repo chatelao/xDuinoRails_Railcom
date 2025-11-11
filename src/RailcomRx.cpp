@@ -11,7 +11,7 @@
  * @brief Constructs a RailcomRx object.
  * @param hardware A pointer to a RailcomHardware implementation.
  */
-RailcomRx::RailcomRx(RailcomHardware* hardware)
+RailcomRx::RailcomRx(RailcomRxHardware* hardware)
     : _hardware(hardware) {}
 
 /**
