@@ -9,7 +9,7 @@
 #define RAILCOM_RX_H
 
 #include "Railcom.h"
-#include "RailcomHardware.h"
+#include "RailcomRxHardware.h"
 #include <vector>
 
 /**
@@ -26,7 +26,7 @@ public:
      * @brief Constructs a RailcomRx object.
      * @param hardware A pointer to a RailcomHardware implementation for physical layer communication.
      */
-    RailcomRx(RailcomHardware* hardware);
+    RailcomRx(RailcomRxHardware* hardware);
 
     /**
      * @brief Initializes the receiver and underlying hardware.
@@ -97,7 +97,7 @@ private:
      */
     RailcomMessage* parseMessage(const std::vector<uint8_t>& buffer);
 
-    RailcomHardware* _hardware; ///< Pointer to the hardware abstraction layer.
+    RailcomRxHardware* _hardware; ///< Pointer to the hardware abstraction layer.
     std::vector<uint8_t> _lastRawBytes; ///< Stores the raw bytes of the last received message.
     RailcomMessage* _lastMessage = nullptr; ///< Pointer to the last successfully parsed message.
     uint8_t _lastAdrHigh = 0; ///< Stores the high byte of a long address for stateful address calculation.

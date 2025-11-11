@@ -1,14 +1,14 @@
 #include <NmraDcc.h>
 #include "Railcom.h"
 #include "RailcomTx.h"
-#include "RP2040RailcomHardware.h"
+#include "RP2040RailcomTxHardware.h"
 #include "DecoderStateMachine.h"
 
 #define DCC_PIN 2
 
 NmraDcc Dcc;
 // Correctly initialize the hardware with the new 3-argument constructor
-RP2040RailcomHardware hardware(uart0, 1, 0); // UART TX on GP1, UART RX on GP0
+RP2040RailcomTxHardware hardware(uart0, 1); // UART TX on GP1
 RailcomTx railcomTx(&hardware);
 
 // For this example, we'll let the NmraDcc library manage the address.

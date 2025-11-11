@@ -1,7 +1,8 @@
 #include "RailcomTx.h"
 #include "RailcomRx.h"
 #include "RailcomEncoding.h"
-#include "mocks/MockRailcomHardware.h"
+#include "mocks/MockRailcomTxHardware.h"
+#include "mocks/MockRailcomRxHardware.h"
 #include "mocks/MockDcc.h"
 
 // Minimal testing framework
@@ -16,9 +17,10 @@
  * @see RCN-217, generell
  */
 test(creation) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   assertTrue(&tx != nullptr);
   assertTrue(&rx != nullptr);
 }
@@ -28,31 +30,34 @@ test(creation) {
  * @see RCN-217, Section 5.2
  */
 test(short_address_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
   uint16_t shortAddress = 100;
 
   // Send the low part of the address first (alternator is initially false).
   tx.sendAddress(shortAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_LOW);
   assertEqual(static_cast<AdrMessage*>(msg)->address, shortAddress & 0x7F);
-  hardware.clear();
+  txHardware.clear();
+  rxHardware.clear();
 
   // Send the high part of the address (alternator is now true).
   tx.sendAddress(shortAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
   assertEqual(static_cast<AdrMessage*>(msg)->address, 0);
-  hardware.clear();
+  txHardware.clear();
+  rxHardware.clear();
 }
 
 /**
@@ -60,40 +65,41 @@ test(short_address_e2e) {
  * @see RCN-217, Sections 5 and 6
  */
 test(end_to_end) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
 
   // Verifies POM (ID 0) message sending and parsing.
   // See RCN-217, Section 5.1
   tx.sendPomResponse(42);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::POM);
   assertEqual(static_cast<PomMessage*>(msg)->cvValue, 42);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies DYN (ID 7) message sending and parsing.
   // See RCN-217, Section 5.5
   tx.sendDynamicData(1, 100);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::DYN);
   assertEqual(static_cast<DynMessage*>(msg)->subIndex, 1);
   assertEqual(static_cast<DynMessage*>(msg)->value, 100);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies XPOM (ID 8-11) message sending and parsing.
   // See RCN-217, Section 5.6
   uint8_t cvs[] = {1, 2, 3, 4};
   tx.sendXpomResponse(0, cvs);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::XPOM_0);
@@ -103,115 +109,115 @@ test(end_to_end) {
   assertEqual(xpomMsg->cvValues[1], 2);
   assertEqual(xpomMsg->cvValues[2], 3);
   assertEqual(xpomMsg->cvValues[3], 4);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies STAT1 (ID 4) message sending and parsing.
   // See RCN-217, Section 6.3
   tx.sendStatus1(0xAB);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::STAT1);
   assertEqual(static_cast<Stat1Message*>(msg)->status, 0xAB);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies STAT2 (ID 8) message sending and parsing.
   // See RCN-217, Section 6.9
   tx.sendStatus2(0x11);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::STAT2);
   assertEqual(static_cast<Stat2Message*>(msg)->status, 0x11);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies STAT4 (ID 3) message sending and parsing.
   // See RCN-217, Section 6.4
   tx.sendStatus4(0xCD);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::STAT4);
   assertEqual(static_cast<Stat4Message*>(msg)->status, 0xCD);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies ERROR (ID 6) message sending and parsing.
   // See RCN-217, Section 6.6
   tx.sendError(0xEF);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ERROR);
   assertEqual(static_cast<ErrorMessage*>(msg)->errorCode, 0xEF);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies TIME (ID 5) message sending and parsing (unit is 0.1s).
   // See RCN-217, Section 6.5
   tx.sendTime(127, false); // 12.7 seconds
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::TIME);
   TimeMessage* timeMsg1 = static_cast<TimeMessage*>(msg);
   assertEqual(timeMsg1->unit_is_second, false);
   assertEqual(timeMsg1->timeValue, 127);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies TIME (ID 5) message sending and parsing (unit is 1s).
   // See RCN-217, Section 6.5
   tx.sendTime(42, true); // 42 seconds
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::TIME);
   TimeMessage* timeMsg2 = static_cast<TimeMessage*>(msg);
   assertEqual(timeMsg2->unit_is_second, true);
   assertEqual(timeMsg2->timeValue, 42);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies CV_AUTO (ID 12) message sending and parsing.
   // See RCN-217, Section 5.7
   tx.sendCvAuto(0x123456, 0xAB);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::CV_AUTO);
   CvAutoMessage* cvAutoMsg = static_cast<CvAutoMessage*>(msg);
   assertEqual(cvAutoMsg->cvAddress, 0x123456);
   assertEqual(cvAutoMsg->cvValue, 0xAB);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies EXT (ID 3) message sending and parsing.
   // See RCN-217, Section 5.3
   tx.sendExt(0x05, 0xBC);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::EXT);
   ExtMessage* extMsg = static_cast<ExtMessage*>(msg);
   assertEqual(extMsg->type, 0x05);
   assertEqual(extMsg->position, 0xBC);
-  hardware.clear();
+  txHardware.clear();
 
   // Verifies BLOCK (ID 13) message sending and parsing.
   // See RCN-218 (Note: BLOCK is defined in RCN-218 but often used with RCN-217 context)
   tx.sendBlock(0xABCDEF12);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::BLOCK);
   BlockMessage* blockMsg = static_cast<BlockMessage*>(msg);
   assertEqual(blockMsg->data, 0xABCDEF12);
-  hardware.clear();
+  txHardware.clear();
 }
 
 
@@ -252,9 +258,10 @@ void setup() {
  * @see RCN-217, Section 5.2.2
  */
 test(info1_cycle_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
   uint16_t longAddress = 4097;
 
@@ -274,27 +281,27 @@ test(info1_cycle_e2e) {
   // 1. ADR_HIGH
   tx.sendAddress(longAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
   assertEqual(static_cast<AdrMessage*>(msg)->address, (longAddress >> 8) & 0x3F);
-  hardware.clear();
+  txHardware.clear();
 
   // 2. ADR_LOW
   tx.sendAddress(longAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_LOW);
   assertEqual(static_cast<AdrMessage*>(msg)->address, longAddress & 0xFF);
-  hardware.clear();
+  txHardware.clear();
 
   // 3. INFO1
   tx.sendAddress(longAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::INFO1);
@@ -304,7 +311,7 @@ test(info1_cycle_e2e) {
   assertEqual(received_info1->is_moving, true);
   assertEqual(received_info1->is_in_consist, false);
   assertEqual(received_info1->request_addressing, true);
-  hardware.clear();
+  txHardware.clear();
 
   // Disable INFO1 and verify the cycle returns to 2 states
   tx.disableInfo1();
@@ -313,20 +320,20 @@ test(info1_cycle_e2e) {
   // 1. ADR_HIGH
   tx.sendAddress(longAddress); // Should be ADR_HIGH again
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
-  hardware.clear();
+  txHardware.clear();
 
   // 2. ADR_LOW
   tx.sendAddress(longAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_LOW);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -334,9 +341,10 @@ test(info1_cycle_e2e) {
  * @see RCN-217, Section 5.2
  */
 test(long_address_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
   uint16_t longAddress = 4097; // Example long address (0x1001)
 
@@ -344,22 +352,22 @@ test(long_address_e2e) {
   // The internal alternator in RailcomTx starts with the high part.
   tx.sendAddress(longAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_HIGH);
   assertEqual(static_cast<AdrMessage*>(msg)->address, (longAddress >> 8) & 0x3F);
-  hardware.clear();
+  txHardware.clear();
 
   // Send the low part of the address.
   tx.sendAddress(longAddress);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::ADR_LOW);
   assertEqual(static_cast<AdrMessage*>(msg)->address, longAddress & 0xFF);
-  hardware.clear();
+  txHardware.clear();
 }
 
 #include "DecoderStateMachine.h"
@@ -369,9 +377,10 @@ test(long_address_e2e) {
  * @see RCN-218, Sections 2, 3.2, 3.6, 4.1, 4.2
  */
 test(logon_procedure_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
 
   uint16_t manufacturerId = 0x0ABC;
@@ -395,14 +404,14 @@ test(logon_procedure_e2e) {
 
   // --- 2. Decoder responds with DECODER_UNIQUE ---
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::DECODER_UNIQUE);
   DecoderUniqueMessage* uniqueMsg = static_cast<DecoderUniqueMessage*>(msg);
   assertEqual(uniqueMsg->manufacturerId, manufacturerId);
   assertEqual(uniqueMsg->productId, productId);
-  hardware.clear();
+  txHardware.clear();
 
   // --- 3. Central sends LOGON_ASSIGN ---
   uint8_t logon_assign_data[] = {
@@ -425,12 +434,12 @@ test(logon_procedure_e2e) {
 
   // --- 4. Decoder responds with DECODER_STATE ---
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::DECODER_STATE);
   // We can't check the content as they are dummy values, but we confirm the type.
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -438,8 +447,9 @@ test(logon_procedure_e2e) {
  * @see RCN-217, Section 5.1.1
  */
 test(decoder_state_machine_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
   // CV28=enable all, CV29=enable railcom, long addr, 28/128 steps
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00001010);
 
@@ -450,8 +460,8 @@ test(decoder_state_machine_e2e) {
 
   // Verify that a POM response with the dummy value 42 is sent
   tx.on_cutout_start();
-  RailcomRx rx(&hardware);
-  hardware.setRxBuffer(hardware.getSentBytes());
+  RailcomRx rx(&rxHardware);
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   RailcomMessage* railcomMsg = rx.read();
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::POM);
@@ -463,8 +473,8 @@ test(decoder_state_machine_e2e) {
  * @see RCN-217, Section 4.2.2
  */
 test(cv_config_disables_railcom) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
   // CV29 has bit 3 (RailCom enable) set to 0.
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00000010);
 
@@ -475,7 +485,7 @@ test(cv_config_disables_railcom) {
   tx.on_cutout_start();
 
   // Verify that NO message was sent
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 }
 
 /**
@@ -483,8 +493,8 @@ test(cv_config_disables_railcom) {
  * @see RCN-217, Section 5.2.1
  */
 test(dynamic_channel1_management) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
   // RailCom is enabled.
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00001010);
 
@@ -494,8 +504,8 @@ test(dynamic_channel1_management) {
   DCCMessage other_loco_msg(other_loco_data, 4);
   sm.handleDccPacket(other_loco_msg);
   tx.on_cutout_start();
-  assertTrue(!hardware.getSentBytes().empty()); // Should broadcast address
-  hardware.clear();
+  assertTrue(!txHardware.getSentBytes().empty()); // Should broadcast address
+  txHardware.clear();
 
   // 2. Simulate a DCC packet for THIS locomotive.
   // This should disable future broadcasts.
@@ -503,13 +513,13 @@ test(dynamic_channel1_management) {
   DCCMessage my_loco_msg(my_loco_data, 4);
   sm.handleDccPacket(my_loco_msg);
   tx.on_cutout_start();
-  hardware.clear(); // Clear any messages sent in response to this packet
+  txHardware.clear(); // Clear any messages sent in response to this packet
 
   // 3. Simulate another packet for the OTHER locomotive.
   // We expect NO broadcast this time.
   sm.handleDccPacket(other_loco_msg);
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 }
 
 /**
@@ -517,8 +527,8 @@ test(dynamic_channel1_management) {
  * @see RCN-218, Section 4.3
  */
 test(data_space_request_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
   uint16_t address = 4097;
   uint16_t manufacturerId = 0x0ABC;
   uint32_t productId = 0x12345678;
@@ -548,12 +558,12 @@ test(data_space_request_e2e) {
   }
   expected_raw_bytes.push_back(RailcomEncoding::encode4of8(expected_crc));
 
-  const auto& sent_bytes = hardware.getSentBytes();
+  const auto& sent_bytes = txHardware.getSentBytes();
   assertEqual(sent_bytes.size(), expected_raw_bytes.size());
   for (size_t i = 0; i < sent_bytes.size(); ++i) {
     assertEqual(sent_bytes[i], expected_raw_bytes[i]);
   }
-  hardware.clear();
+  txHardware.clear();
 }
 
 void loop() {
@@ -565,22 +575,23 @@ void loop() {
  * @see RCN-217, Section 6.1
  */
 test(service_request_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
   uint16_t accessoryAddress = 1234;
 
   tx.sendServiceRequest(accessoryAddress, true);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::SRQ);
   SrqMessage* srqMsg = static_cast<SrqMessage*>(msg);
   assertEqual(srqMsg->accessoryAddress, accessoryAddress);
   assertEqual(srqMsg->isExtended, true);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -588,23 +599,24 @@ test(service_request_e2e) {
  * @see RCN-218, Section 4.1
  */
 test(decoder_unique_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
   uint16_t manufacturerId = 0x0ABC; // 12-bit value
   uint32_t productId = 0x12345678;
 
   tx.sendDecoderUnique(manufacturerId, productId);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::DECODER_UNIQUE);
   DecoderUniqueMessage* uniqueMsg = static_cast<DecoderUniqueMessage*>(msg);
   assertEqual(uniqueMsg->manufacturerId, manufacturerId);
   assertEqual(uniqueMsg->productId, productId);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -612,14 +624,15 @@ test(decoder_unique_e2e) {
  * @see RCN-218, Section 4.2
  */
 test(decoder_state_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
 
   tx.sendDecoderState(0xAA, 0x0BCC, 0xDDEE); // 12-bit changeCount
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::DECODER_STATE);
@@ -627,7 +640,7 @@ test(decoder_state_e2e) {
   assertEqual(stateMsg->changeFlags, 0xAA);
   assertEqual(stateMsg->changeCount, 0x0BCC);
   assertEqual(stateMsg->protocolCaps, 0xDDEE);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -635,26 +648,26 @@ test(decoder_state_e2e) {
  * @see RCN-217, Section 2.5
  */
 test(ack_nack_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
 
   // Test ACK
   tx.sendAck();
   tx.on_cutout_start();
-  auto sentBytes = hardware.getSentBytes();
+  auto sentBytes = txHardware.getSentBytes();
   std::vector<uint8_t> expected_ack = {RAILCOM_ACK1, RAILCOM_ACK2, RAILCOM_ACK1, RAILCOM_ACK2, RAILCOM_ACK1, RAILCOM_ACK2};
   assertEqual(sentBytes.size(), expected_ack.size());
   for(size_t i=0; i<expected_ack.size(); ++i) assertEqual(sentBytes[i], expected_ack[i]);
-  hardware.clear();
+  txHardware.clear();
 
   // Test NACK
   tx.sendNack();
   tx.on_cutout_start();
-  sentBytes = hardware.getSentBytes();
+  sentBytes = txHardware.getSentBytes();
   std::vector<uint8_t> expected_nack = {RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK, RAILCOM_NACK};
   assertEqual(sentBytes.size(), expected_nack.size());
   for(size_t i=0; i<expected_nack.size(); ++i) assertEqual(sentBytes[i], expected_nack[i]);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -662,16 +675,17 @@ test(ack_nack_e2e) {
  * @see RCN-217, Section 5.2.3
  */
 test(rerailing_search_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
   uint16_t address = 0x1234;
   uint32_t seconds = 123;
 
   tx.handleRerailingSearch(address, seconds);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
 
   // 1. ADR_HIGH
   msg = rx.read();
@@ -691,7 +705,7 @@ test(rerailing_search_e2e) {
   assertEqual(msg->id, RailcomID::RERAIL);
   assertEqual(static_cast<RerailMessage*>(msg)->counter, seconds);
 
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -699,12 +713,13 @@ test(rerailing_search_e2e) {
  * @see RCN-217, Section 5.7
  */
 test(xf3_cv_auto_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
   uint16_t address = 100;
   // RailCom enabled
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, address, 0, 0b00001000);
-  RailcomRx rx(&hardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
 
   // --- 1. Trigger XF3 to START the broadcast ---
@@ -715,29 +730,29 @@ test(xf3_cv_auto_e2e) {
   tx.on_cutout_start();
 
   // Verify no message is sent immediately
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 
   // --- 2. Call task() to send the first CV ---
   sm.task();
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::CV_AUTO);
   assertEqual(static_cast<CvAutoMessage*>(msg)->cvAddress, 1);
   assertEqual(static_cast<CvAutoMessage*>(msg)->cvValue, 10);
-  hardware.clear();
+  txHardware.clear();
 
   // --- 3. Call task() again for the second CV ---
   sm.task();
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::CV_AUTO);
   assertEqual(static_cast<CvAutoMessage*>(msg)->cvAddress, 8);
   assertEqual(static_cast<CvAutoMessage*>(msg)->cvValue, 155);
-  hardware.clear();
+  txHardware.clear();
 
   // --- 4. Trigger XF3 again to STOP the broadcast ---
   sm.handleDccPacket(dcc_msg);
@@ -746,7 +761,7 @@ test(xf3_cv_auto_e2e) {
   // --- 5. Call task() again and verify no message is sent ---
   sm.task();
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 }
 
 /**
@@ -754,9 +769,10 @@ test(xf3_cv_auto_e2e) {
  * @see RCN-218, Section 4.3
  */
 test(data_space_e2e_full) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   uint8_t data[] = {0x01, 0x02, 0x03, 0xAA, 0xBB}; // len=5
   uint8_t dataSpaceNum = 5;
 
@@ -765,7 +781,7 @@ test(data_space_e2e_full) {
   tx.on_cutout_start();
 
   // 2. RX receives the data
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   rx.expectDataSpaceResponse(dataSpaceNum);
   RailcomMessage* msg_raw = rx.read();
 
@@ -780,7 +796,7 @@ test(data_space_e2e_full) {
     assertEqual(msg->data[i], data[i]);
   }
 
-  hardware.clear();
+  txHardware.clear();
 }
 
 
@@ -789,9 +805,10 @@ test(data_space_e2e_full) {
  * @see RCN-217, Section 5.4
  */
 test(info_message_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
 
   // Set context to mobile to correctly interpret ID 4 as INFO
@@ -803,7 +820,7 @@ test(info_message_e2e) {
 
   tx.sendInfo(speed, motorLoad, statusFlags);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::INFO);
@@ -811,7 +828,7 @@ test(info_message_e2e) {
   assertEqual(infoMsg->speed, speed);
   assertEqual(infoMsg->motorLoad, motorLoad);
   assertEqual(infoMsg->statusFlags, statusFlags);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -819,11 +836,12 @@ test(info_message_e2e) {
  * @see RCN-217, Section 5.3.1
  */
 test(xf1_location_request_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
   // RailCom enabled, long address format
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 4097, 0b00000011, 0b00001010);
-  RailcomRx rx(&hardware);
+  RailcomRx rx(&rxHardware);
 
   // --- Test with Long Address ---
   uint8_t dcc_data_long[] = {0xD0, 0x01, 0xDE, 0x01, 0};
@@ -831,14 +849,14 @@ test(xf1_location_request_e2e) {
   sm.handleDccPacket(msg_long);
   tx.on_cutout_start();
 
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   RailcomMessage* railcomMsg = rx.read();
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::EXT);
   ExtMessage* extMsg = static_cast<ExtMessage*>(railcomMsg);
   assertEqual(extMsg->type, 0);
   assertEqual(extMsg->position, 0);
-  hardware.clear();
+  txHardware.clear();
 
   // --- Test with Short Address ---
   DecoderStateMachine sm_short(tx, DecoderType::LOCOMOTIVE, 100, 0b00000011, 0b00001010);
@@ -847,11 +865,11 @@ test(xf1_location_request_e2e) {
   sm_short.handleDccPacket(msg_short);
   tx.on_cutout_start();
 
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   railcomMsg = rx.read();
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::EXT);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -859,19 +877,20 @@ test(xf1_location_request_e2e) {
  * @see RCN-217, Section 5.2.3
  */
 test(xf2_rerailing_search_broadcast_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
   // RailCom enabled, use a long address for the test
   uint16_t address = 4097;
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, address, 0b00000011, 0b00001010);
-  RailcomRx rx(&hardware);
+  RailcomRx rx(&rxHardware);
 
   uint8_t dcc_data[] = {0x00, 0xDE, 0x02, 0};
   DCCMessage msg(dcc_data, 4);
   sm.handleDccPacket(msg);
   tx.on_cutout_start();
 
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
 
   // 1. ADR_HIGH
   RailcomMessage* railcomMsg = rx.read();
@@ -891,7 +910,7 @@ test(xf2_rerailing_search_broadcast_e2e) {
   assertEqual(railcomMsg->id, RailcomID::RERAIL);
   assertTrue(static_cast<RerailMessage*>(railcomMsg)->counter >= 0);
 
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -899,9 +918,10 @@ test(xf2_rerailing_search_broadcast_e2e) {
  * @see RCN-217, Section 6.3 and 6.4
  */
 test(accessory_decoder_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   uint16_t address = 200;
   // CV29 enables RailCom.
   DecoderStateMachine sm(tx, DecoderType::ACCESSORY, address, 0, 0b00001000);
@@ -914,99 +934,100 @@ test(accessory_decoder_e2e) {
   sm.handleDccPacket(msg_on);
   tx.on_cutout_start();
 
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   RailcomMessage* railcomMsg = rx.read();
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::STAT4);
   assertEqual(static_cast<Stat4Message*>(railcomMsg)->status, 0b00000010); // Output 1 corresponds to bit 1
-  hardware.clear();
+  txHardware.clear();
 
   // --- 2. Deactivate output 1 ---
   DCCMessage msg_off = MockDcc::createAccessoryDccMessage(address, false, 1);
   sm.handleDccPacket(msg_off);
   tx.on_cutout_start();
 
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   railcomMsg = rx.read();
   assertNotNull(railcomMsg);
   assertEqual(railcomMsg->id, RailcomID::STAT4);
   assertEqual(static_cast<Stat4Message*>(railcomMsg)->status, 0b00000000);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
  * @brief Verifies end-to-end communication with boundary (min/max) values for various messages.
  */
 test(boundary_value_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
-  RailcomRx rx(&hardware);
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
   RailcomMessage* msg;
 
   // --- Test short address boundaries ---
   tx.sendAddress(1);
   tx.sendAddress(1);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   // Note: with the new queueing logic, we get ADR_HIGH first
   assertEqual(msg->id, RailcomID::ADR_HIGH);
-  hardware.clear();
+  txHardware.clear();
 
 
   // --- Test TIME max value ---
   tx.sendTime(127, true); // Max time value in seconds
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::TIME);
   assertEqual(static_cast<TimeMessage*>(msg)->timeValue, 127);
   assertEqual(static_cast<TimeMessage*>(msg)->unit_is_second, true);
-  hardware.clear();
+  txHardware.clear();
 
   // --- Test EXT max values ---
   tx.sendExt(7, 255); // Max type and position
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::EXT);
   assertEqual(static_cast<ExtMessage*>(msg)->type, 7);
   assertEqual(static_cast<ExtMessage*>(msg)->position, 255);
-  hardware.clear();
+  txHardware.clear();
 
   // --- Test SRQ boundaries ---
   tx.sendServiceRequest(1, false);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::SRQ);
   assertEqual(static_cast<SrqMessage*>(msg)->accessoryAddress, 1);
-  hardware.clear();
+  txHardware.clear();
 
   tx.sendServiceRequest(2047, true);
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   msg = rx.read();
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::SRQ);
   assertEqual(static_cast<SrqMessage*>(msg)->accessoryAddress, 2047);
-  hardware.clear();
+  txHardware.clear();
 
   // --- Test Rerailing search time capping ---
   tx.handleRerailingSearch(100, 300); // 300 > MAX_RERAIL_SECONDS (255)
   tx.on_cutout_start();
-  hardware.setRxBuffer(hardware.getSentBytes());
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
   rx.read(); // ADR_HIGH
   rx.read(); // ADR_LOW
   msg = rx.read(); // RERAIL
   assertNotNull(msg);
   assertEqual(msg->id, RailcomID::RERAIL);
   assertEqual(static_cast<RerailMessage*>(msg)->counter, 255);
-  hardware.clear();
+  txHardware.clear();
 }
 
 /**
@@ -1014,8 +1035,8 @@ test(boundary_value_e2e) {
  * @see RCN-218, Section 2
  */
 test(logon_error_cases_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
 
   uint16_t manufacturerId = 0x0ABC;
   uint32_t productId = 0x12345678;
@@ -1027,7 +1048,7 @@ test(logon_error_cases_e2e) {
   DCCMessage logon_enable_msg(logon_enable_data, sizeof(logon_enable_data));
   sm_wrong_id.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  hardware.clear(); // Clear the DECODER_UNIQUE response
+  txHardware.clear(); // Clear the DECODER_UNIQUE response
 
   uint32_t wrongProductId = 0x87654321;
   uint8_t logon_assign_wrong_id_data[] = {
@@ -1042,7 +1063,7 @@ test(logon_error_cases_e2e) {
 
   sm_wrong_id.handleDccPacket(logon_assign_wrong_id_msg);
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 
   // --- 2. Test LOGON_ASSIGN in wrong state (IDLE) ---
   DecoderStateMachine sm_wrong_state(tx, DecoderType::LOCOMOTIVE, 0, 0, 0b00001000, manufacturerId, productId);
@@ -1058,7 +1079,7 @@ test(logon_error_cases_e2e) {
 
   sm_wrong_state.handleDccPacket(logon_assign_msg);
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 }
 
 /**
@@ -1066,8 +1087,8 @@ test(logon_error_cases_e2e) {
  * @see RCN-218, Section 7.2
  */
 test(backoff_mechanism_e2e) {
-  MockRailcomHardware hardware;
-  RailcomTx tx(&hardware);
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
   DecoderStateMachine sm(tx, DecoderType::LOCOMOTIVE, 0, 0, 0b00001000, 0x0ABC, 0x12345678);
 
   uint8_t logon_enable_data[] = { RCN218::DCC_A_ADDRESS, (uint8_t)RCN218::CMD_LOGON_ENABLE, 0, 0, 0, 0 };
@@ -1076,33 +1097,33 @@ test(backoff_mechanism_e2e) {
   // 1. First LOGON_ENABLE: Decoder should respond.
   sm.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  assertTrue(!hardware.getSentBytes().empty());
-  hardware.clear();
+  assertTrue(!txHardware.getSentBytes().empty());
+  txHardware.clear();
 
   // 2. Second LOGON_ENABLE (no assignment in between): Decoder should NOT respond (backoff=1).
   sm.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 
   // 3. Third LOGON_ENABLE: Decoder should respond again (backoff counter is done).
   sm.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  assertTrue(!hardware.getSentBytes().empty());
-  hardware.clear();
+  assertTrue(!txHardware.getSentBytes().empty());
+  txHardware.clear();
 
   // 4. Fourth LOGON_ENABLE: Should NOT respond (backoff=2).
   sm.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 
   // 5. Fifth LOGON_ENABLE: Should NOT respond (backoff=2).
   sm.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  assertTrue(hardware.getSentBytes().empty());
+  assertTrue(txHardware.getSentBytes().empty());
 
   // 6. Sixth LOGON_ENABLE: Should respond again.
   sm.handleDccPacket(logon_enable_msg);
   tx.on_cutout_start();
-  assertTrue(!hardware.getSentBytes().empty());
-  hardware.clear();
+  assertTrue(!txHardware.getSentBytes().empty());
+  txHardware.clear();
 }

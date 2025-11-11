@@ -12,7 +12,7 @@
  * @brief Constructs a RailcomTx object.
  * @param hardware A pointer to a RailcomHardware implementation.
  */
-RailcomTx::RailcomTx(RailcomHardware* hardware)
+RailcomTx::RailcomTx(RailcomTxHardware* hardware)
     : _hardware(hardware), _address_alternator(0), _info1_enabled(false), _info1_payload(0) {
 }
 
