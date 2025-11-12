@@ -1,131 +1,89 @@
 # API Reference
 
-This document provides a detailed reference to the public API of the RailCom library.
+This document provides a detailed reference for the public API of the RP2040 RailCom Library. The library is structured around a Hardware Abstraction Layer (HAL) and high-level manager classes.
 
-## `RailcomTx`
+## High-Level Classes
 
-The `RailcomTx` class is responsible for transmitting RailCom messages. It uses the RP2040's PIO to generate the precise timing required for the RailCom cutout.
+These are the main classes you will interact with in your application.
 
-### `RailcomTx(uart_inst_t* uart, uint tx_pin, uint pio_pin)`
+### `RailcomTx`
 
-Constructor for the `RailcomTx` class.
+Manages the queuing and transmission of RailCom messages. Designed for use in a decoder.
 
-- **`uart`**: The UART instance to use for transmitting the RailCom signal (e.g., `uart0`).
-- **`tx_pin`**: The GPIO pin to use for the UART TX signal.
-- **`pio_pin`**: The GPIO pin connected to the DCC signal, used by the PIO to detect the cutout.
+- **`RailcomTx(RailcomTxHardware* hardware)`**: Constructor. Takes a pointer to a concrete hardware implementation (e.g., `RP2040RailcomTxHardware`).
+- **`void begin()`**: Initializes the transmitter.
+- **`void on_cutout_start(uint32_t elapsed_us = 0)`**: Triggers the sending of queued messages. This should be called at the start of the DCC cutout.
+- **`void sendPomResponse(uint8_t cvValue)`**: Queues a POM response on Channel 2.
+- **`void sendAddress(uint16_t address)`**: Manages the broadcast of the decoder's address on Channel 1. Handles alternating between `ADR_HIGH` and `ADR_LOW` for long addresses.
+- **`void enableInfo1(const Info1Message& info1)`**: Includes an `INFO1` message in the Channel 1 address broadcast cycle.
+- **`void disableInfo1()`**: Removes the `INFO1` message from the Channel 1 broadcast cycle.
+- **`void sendServiceRequest(uint16_t accessoryAddress, bool isExtended)`**: Queues a service request (SRQ) for an accessory decoder on Channel 2.
+- **`void sendDecoderUnique(uint16_t manufacturerId, uint32_t productId)`**: Queues the decoder's unique ID (RCN-218) on Channel 2.
+- **`void sendDecoderState(...)`**: Queues the decoder's state (RCN-218) on Channel 2.
+- **`void sendDataSpace(...)`**: Queues a raw Data Space message (RCN-218) on Channel 2.
+- _...and many other `send...` methods for all RCN-217 and RCN-218 message types._
 
-### `void begin()`
+### `RailcomRx`
 
-Initializes the PIO and UART for RailCom transmission. This must be called before any other methods.
+Manages the reception and parsing of RailCom messages. Designed for use in a command station or detector.
 
-### `void end()`
+- **`RailcomRx(RailcomRxHardware* hardware)`**: Constructor. Takes a pointer to a concrete hardware implementation (e.g., `RP2040RailcomRxHardware`).
+- **`void begin()`**: Initializes the receiver.
+- **`void task()`**: A periodic task function to be called in the main loop.
+- **`RailcomMessage* read()`**: Reads, decodes, and parses a message from the hardware. Returns a pointer to a base `RailcomMessage` struct. The caller must cast this to the appropriate message type based on the `id` field. Returns `nullptr` if no valid message is available.
+- **`void setContext(DecoderContext context)`**: Sets the context (e.g., `MOBILE` or `STATIONARY`) to disambiguate messages with shared IDs.
+- **`void print(Print& stream)`**: Prints a human-readable summary of the last received message to a stream (e.g., `Serial`).
+- **`void expectDataSpaceResponse(uint8_t dataSpaceNum)`**: Flags the receiver to parse the next message as a special RCN-218 Data Space response.
 
-Deinitializes the PIO and UART.
+### `DecoderStateMachine`
 
-### `void task()`
+A high-level class that encapsulates the logic of a decoder, linking DCC packet parsing to RailCom responses.
 
-This method must be called repeatedly in the main application loop. It handles the non-blocking sending of queued messages.
+- **`DecoderStateMachine(RailcomTx& txManager, ...)`**: Constructor. Takes a reference to `RailcomTx` and various decoder configuration parameters (type, address, CVs, etc.).
+- **`void handleDccPacket(const DCCMessage& dccMsg)`**: The main entry point. Analyzes an incoming `DCCMessage` and triggers the appropriate RailCom response.
+- **`void task()`**: A periodic task function for handling background processes like the automatic CV broadcast.
 
-### `void send_dcc_with_cutout(const DCCMessage& dccMsg)`
+### `RailcomDccParser`
 
-Sends a DCC message and immediately triggers the PIO cutout sequence for sending any queued RailCom messages.
+A callback-based parser for DCC commands relevant to RailCom. Used internally by `DecoderStateMachine`.
 
-### Vehicle Decoder (MOB) Functions
+- **`void parse(const DCCMessage& msg, bool* response_sent = nullptr)`**: Parses a `DCCMessage` and invokes any matching registered callback.
+- **`std::function<void(...)> on...`**: Numerous public `std::function` members that can be assigned callbacks for specific DCC events (e.g., `onPomReadCv`, `onLogonEnable`, `onAccessory`).
 
-- **`void sendPomResponse(uint8_t cvValue)`**: Sends a POM response with the value of a single CV.
-- **`void sendAddress(uint16_t address)`**: Sends the decoder's address.
-- **`void sendDynamicData(uint8_t subIndex, uint8_t value)`**: Sends a dynamic data message.
-- **`void sendXpomResponse(uint8_t sequence, const uint8_t cvValues[4])`**: Sends a response for an indexed POM write.
-- **`void handleRerailingSearch(uint16_t address, uint32_t secondsSincePowerOn)`**: Handles the rerailing search sequence.
+## Hardware Abstraction Layer (HAL)
 
-### Accessory Decoder (STAT) Functions
+These abstract base classes define the interface between the high-level logic and the specific hardware platform.
 
-- **`void sendServiceRequest(uint16_t accessoryAddress, bool isExtended)`**: Sends a service request for an accessory decoder.
-- **`void sendStatus1(uint8_t status)`**: Sends a status message (type 1).
-- **`void sendStatus4(uint8_t status)`**: Sends a status message (type 4).
-- **`void sendError(uint8_t errorCode)`**: Sends an error message.
+### `RailcomTxHardware`
 
-### RCN-218 DCC-A Functions
+- **`virtual void begin() = 0`**: Initializes the hardware.
+- **`virtual void send_bytes(const std::vector<uint8_t>& bytes) = 0`**: Sends a vector of raw, pre-encoded bytes.
 
-- **`void sendDecoderUnique(uint16_t manufacturerId, uint32_t productId)`**: Sends the decoder's unique ID.
-- **`void sendDecoderState(uint8_t changeFlags, uint16_t changeCount, uint16_t protocolCaps)`**: Sends the decoder's state.
-- **`void sendDataSpace(const uint8_t* data, size_t len, uint8_t dataSpaceNum)`**: Sends data to a specific data space.
-- **`void sendAck()`**: Sends an ACK.
-- **`void sendNack()`**: Sends a NACK.
+### `RailcomRxHardware`
 
-## `RailcomRx`
+- **`virtual void begin() = 0`**: Initializes the hardware.
+- **`virtual int available() = 0`**: Returns the number of bytes available to read.
+- **`virtual int read() = 0`**: Reads a single byte from the hardware.
 
-The `RailcomRx` class is responsible for receiving RailCom messages.
+## RP2040 HAL Implementations
 
-### `RailcomRx(uart_inst_t* uart, uint rx_pin)`
+These are the concrete implementations of the HAL for the RP2040 microcontroller.
 
-Constructor for the `RailcomRx` class.
+### `RP2040RailcomTxHardware`
 
-- **`uart`**: The UART instance to use for receiving the RailCom signal (e.g., `uart0`).
-- **`rx_pin`**: The GPIO pin to use for the UART RX signal.
+- **`RP2040RailcomTxHardware(uart_inst_t* uart, uint tx_pin)`**: Constructor.
+  - `uart`: The RP2040 UART instance (e.g., `uart0`).
+  - `tx_pin`: The GPIO pin number for UART TX.
 
-### `void begin()`
+### `RP2040RailcomRxHardware`
 
-Initializes the UART for RailCom reception.
+- **`RP2040RailcomRxHardware(uart_inst_t* uart, uint rx_pin)`**: Constructor.
+  - `uart`: The RP2040 UART instance (e.g., `uart0`).
+  - `rx_pin`: The GPIO pin number for UART RX.
 
-### `void end()`
+## Core Data Structures (`Railcom.h`)
 
-Deinitializes the UART.
-
-### `void set_decoder_address(uint16_t address)`
-
-Sets the address of the decoder being communicated with. This is used for filtering messages.
-
-### `RailcomMessage* readMessage()`
-
-Reads and parses a RailCom message from the UART. Returns a pointer to a `RailcomMessage` object if a message was successfully parsed, otherwise returns `nullptr`. The type of the returned message can be determined by its `id` field.
-
-## `DecoderStateMachine`
-
-The `DecoderStateMachine` class encapsulates the logic for deciding which RailCom message to send in response to a given DCC packet.
-
-### `DecoderStateMachine(RailcomTxManager& txManager, DecoderType type, uint16_t address, uint16_t manufacturerId = 0, uint32_t productId = 0)`
-
-Constructor for the `DecoderStateMachine`.
-
-- **`txManager`**: A reference to the `RailcomTx` instance.
-- **`type`**: The type of the decoder (`LOCOMOTIVE` or `ACCESSORY`).
-- **`address`**: The address of the decoder.
-- **`manufacturerId`**: (Optional) The manufacturer ID of the decoder.
-- **`productId`**: (Optional) The product ID of the decoder.
-
-### `void handleDccPacket(const DCCMessage& dccMsg)`
-
-This is the main entry point for the state machine. It analyzes the incoming DCC packet and queues the appropriate RailCom response using the `RailcomTx` instance.
-
-## `Railcom`
-
-The `Railcom` namespace and data structures provide common definitions and utility functions used throughout the library.
-
-### `DCCMessage`
-
-A class that encapsulates a DCC message.
-
-- **`DCCMessage(const uint8_t* data, size_t len)`**: Constructor to create a DCC message from a byte array.
-- **`const uint8_t* getData() const`**: Returns a pointer to the raw DCC message data.
-- **`size_t getLength() const`**: Returns the length of the DCC message in bytes.
-
-### `RailcomID`
-
-An enum that defines the various RailCom message IDs, as specified in RCN-217 and RCN-218.
-
-### `RailcomMessage`
-
-A base struct for all RailCom messages. It contains a `RailcomID` field.
-
-### `Railcom::encode4of8(uint8_t value)`
-
-Encodes a 6-bit value into a 4-out-of-8 encoded byte.
-
-### `Railcom::decode4of8(uint8_t encodedByte)`
-
-Decodes a 4-out-of-8 encoded byte back into a 6-bit value.
-
-### `Railcom::crc8(const uint8_t* data, size_t len, uint8_t init = 0)`
-
-Calculates the RCN-218 CRC8 checksum.
+- **`class DCCMessage`**: Encapsulates a raw DCC packet (data pointer and length).
+- **`enum class RailcomID`**: Defines all message IDs from RCN-217 and RCN-218.
+- **`struct RailcomMessage`**: The base struct for all parsed messages. Contains the `id`.
+- **`struct PomMessage`, `struct AdrMessage`, etc.**: Specific message structs that inherit from `RailcomMessage` and contain the decoded payload data for each message type.

@@ -1,117 +1,124 @@
 # Howto: RailCom Decoder (Transmitter)
 
-This guide explains how to wire a Seeed Xiao RP2040 and run a minimal software example to create a RailCom-enabled locomotive decoder.
+This guide explains how to wire a Seeed Studio XIAO RP2040 and run a minimal software example to create a RailCom-enabled locomotive decoder. By the end, you will understand how to send Railcom messages from a decoder in response to DCC commands.
 
-## The Role of the PIO Pin
+## Key Concepts
 
-A common point of confusion is the role of the PIO pin. The RailCom specification requires a "cutout" in the DCC signal, a brief period where the track is unpowered, allowing the decoder to transmit its message.
+A RailCom transmitter (decoder) doesn't just send data; it has to do so in perfect synchronization with the DCC signal.
 
-- The **`RailcomTx` library does not create the physical cutout on the high-power DCC rails itself.**
-- Instead, it generates a precise **logic-level control signal** on the specified PIO pin (D7 in the example).
-- This control signal is intended to be connected to a DCC booster or command station that is capable of creating the actual cutout on the track.
-- The library then sends the RailCom message on the UART TX pin during the time it asserts the cutout signal.
+1.  **The "Cutout":** A RailCom decoder can only transmit during a brief, powerless gap in the DCC signal known as the "cutout."
+2.  **Cutout Control Signal:** This library does **not** create the high-power cutout on the rails itself. Instead, it generates a precise **logic-level control signal** on a specified GPIO pin. This signal is intended to be connected to a DCC booster or command station that has a "cutout control" input, which then creates the actual cutout on the track.
+3.  **Message Timing:** The library automatically sends its queued RailCom message via UART TX at the exact moment it asserts the cutout control signal.
 
-## Wiring
+## Wiring Diagram
 
-The following wiring is required to connect the Seeed Xiao RP2040 to your DCC track to send RailCom messages.
+This diagram shows a minimal setup for demonstration purposes. A real-world decoder would require a more robust circuit with opto-isolation and a full bridge rectifier to safely handle the DCC track signal.
 
 **Components:**
-- 1x Seeed Xiao RP2040
+- 1x Seeed Studio XIAO RP2040
 - 1x 1kΩ resistor
 
 **Connections:**
-1.  Connect the DCC signal from your command station to one of the track rails.
-2.  Connect the other track rail to the GND pin on the Seeed Xiao RP2040.
-3.  Connect the DCC signal rail through a 1kΩ resistor to the TX pin of the Seeed Xiao RP2040's UART0 (Pin D6/GPIO0). This is the RailCom message transmission pin.
-4.  Connect the PIO pin (Pin D7/GPIO1) to the cutout control input of your DCC booster. This pin outputs the cutout control signal.
+- The **DCC Signal** from the track is connected through a 1kΩ resistor to the XIAO's **UART TX pin (D6)**. This is how the RailCom message is physically sent.
+- The **Track GND** provides a common ground reference.
+- The **Cutout Control Signal** is generated on a separate GPIO pin (**D7**). This pin should be connected to the cutout control input of your DCC booster.
 
-**Diagram:**
-
+```ascii
+                      RailCom Signal (to Track)
+                            ▲
+                            │
+                      ┌─────┴─────┐
+                      │ 1kΩ Resistor │
+                      └─────┬─────┘
+                            │
+┌───────────────────────────┼───────────────────────────┐
+│                           │                           │
+│     ┌─────────────────────┴─────────────────────┐     │
+│     │ D6/GPIO0 (UART0 TX)                       │     │
+│     │                                           │     │
+│     │             Seeed Studio XIAO             ├─────┤  Track GND
+│     │                   RP2040                  │ GND │
+│     │                                           │     │
+│     │ D7/GPIO1 (PIO Cutout Control)             │     │
+│     └─────────────────────┬─────────────────────┘     │
+│                           │                           │
+└───────────────────────────┼───────────────────────────┘
+                            │
+                            ▼
+                To DCC Booster Cutout Control Input
 ```
-                                  ┌────────────────────┐
-DCC Booster Cutout Control Input ─┤ D7/GPIO1 (PIO Pin) │
-                                  │                    │
-               ┌───────────────┐  │                    │
-DCC Signal ----│ 1kΩ Resistor  ├--┤ D6/GPIO0 (TX Pin)  │
-               └───────────────┘  │   Seeed Xiao       │
-                                  │      RP2040        │
-Track GND ------------------------┤ GND                │
-                                  └────────────────────┘
-```
-
-**Note:** This is a very basic circuit for demonstration purposes. A real-world decoder would have a more robust circuit including opto-isolation and a full bridge rectifier.
 
 ## Minimal Software Example
 
-This example demonstrates how to initialize the `RailcomTx` library and send a RailCom message in response to a simulated DCC packet.
+This example demonstrates how to initialize the `RailcomTx` library and queue a RailCom message to be sent in response to a simulated DCC packet.
 
 **Code:**
-
 ```cpp
 #include <Arduino.h>
 #include "RailcomTx.h"
 #include "DecoderStateMachine.h"
 
-// Define the locomotive address
+// Define the locomotive address for this decoder.
 const uint16_t LOCO_ADDRESS = 3;
 
-// Initialize the RailcomTx library.
-// - uart0: The UART instance to use for sending RailCom messages.
-// - TX Pin (GPIO0 -> D6): The pin connected to the DCC rail for transmitting the RailCom signal.
-// - PIO Pin (GPIO1 -> D7): The pin that will output a logic-level signal to control the DCC cutout.
-//   This signal should be connected to a DCC booster that can create the physical cutout.
+// 1. Initialize the RailcomTx library.
+//    - uart0: The hardware UART instance to use.
+//    - TX Pin (0 -> D6 on XIAO): The GPIO pin for the UART TX signal.
+//    - PIO Pin (1 -> D7 on XIAO): The GPIO pin that will generate the
+//      logic-level signal to control the DCC cutout.
 RailcomTx railcomTx(uart0, 0, 1);
 
-// Initialize the Decoder State Machine
+// 2. Initialize the Decoder State Machine.
+//    This helper class contains the logic to decide which RailCom message
+//    to send in response to different DCC commands.
 DecoderStateMachine stateMachine(railcomTx, DecoderType::LOCOMOTIVE, LOCO_ADDRESS);
 
 void setup() {
-  // Start the RailCom transmitter
+  // Start the RailCom transmitter. This configures the PIO and UART.
   railcomTx.begin();
 
   Serial.begin(115200);
   while (!Serial) {
-    ; // Wait for serial port to connect. Needed for native USB port only
+    ; // Wait for the serial port to connect.
   }
-  Serial.println("RailCom TX Example Initialized");
+  Serial.println("RailCom TX Decoder Example Initialized");
 }
 
 void loop() {
-  // The railcomTx.task() function must be called repeatedly in the main loop
-  // to handle the non-blocking sending of queued messages.
+  // 3. The railcomTx.task() function must be called repeatedly in the main loop.
+  //    It handles the non-blocking sending of any queued messages.
   railcomTx.task();
 
-  // --- Simulate receiving a DCC packet for our address ---
-  // In a real decoder, this would come from an NMRA DCC library.
+  // --- In a real decoder, the following would be triggered by an NMRA DCC library ---
+
+  // 4. Simulate receiving a DCC "speed and direction" packet for our address.
   DCCMessage dcc_msg;
   dcc_msg.len = 3;
-  dcc_msg.data[0] = high(LOCO_ADDRESS);
-  dcc_msg.data[1] = low(LOCO_ADDRESS);
-  dcc_msg.data[2] = 0b01100000; // Speed and direction
+  dcc_msg.data[0] = high(LOCO_ADDRESS); // Address High Byte
+  dcc_msg.data[1] = low(LOCO_ADDRESS);  // Address Low Byte
+  dcc_msg.data[2] = 0b01100000;         // Command (Speed/Direction)
 
-  // The DecoderStateMachine decides what message to send back.
+  // 5. Pass the DCC packet to the state machine. It analyzes the packet
+  //    and queues the appropriate RailCom response (e.g., an address broadcast).
   stateMachine.handleDccPacket(dcc_msg);
 
-  // This function sends the DCC message and creates the cutout for the RailCom message.
-  // The queued RailCom message from the state machine will be sent during the cutout.
-  railcomTx.send_dcc_with_cutout(dcc_msg);
+  // 6. Tell the library to generate the cutout. The RailcomTx library will now
+  //    assert the PIO cutout control pin and simultaneously send the queued
+  //    RailCom message on the UART TX pin.
+  railcomTx.on_cutout_start();
 
-  Serial.println("Sent DCC packet with RailCom cutout.");
+  Serial.println("Simulated DCC packet received, RailCom response sent.");
 
-  // Wait before sending the next packet
+  // Wait for a second before repeating the loop.
   delay(1000);
 }
 ```
 
 **Explanation:**
 
-1.  **`#include` directives:** We include the necessary library headers.
-2.  **`LOCO_ADDRESS`:**  The DCC address of our simulated locomotive.
-3.  **`RailcomTx railcomTx(...)`:** We create an instance of the `RailcomTx` class, telling it to use `uart0`, pin `0` (which is D6 on the Xiao RP2040) for transmitting, and pin `1` (D7) for the PIO cutout signal.
-4.  **`DecoderStateMachine stateMachine(...)`:** This helper class encapsulates the logic for which RailCom message to send.
-5.  **`setup()`:** We initialize the `RailcomTx` library.
-6.  **`loop()`:**
-    *   `railcomTx.task()`: This is essential for the non-blocking operation of the library.
-    *   We create a `DCCMessage` to simulate a packet being received.
-    *   `stateMachine.handleDccPacket(dcc_msg)`: We pass the DCC packet to the state machine, which queues the appropriate RailCom response.
-    *   `railcomTx.send_dcc_with_cutout(dcc_msg)`: This function is the key. It simulates sending the DCC packet to the motor and, critically, uses the PIO to create the RailCom cutout in the DCC signal. The message queued by the state machine is automatically sent during this cutout.
+The workflow is straightforward:
+
+1.  **Initialization:** In `setup()`, we create instances of `RailcomTx` and `DecoderStateMachine`. We tell `RailcomTx` which hardware pins to use for the UART signal and the PIO cutout control.
+2.  **DCC Packet Arrival:** In a real decoder, a library like `NmraDcc` would notify you when a new DCC packet arrives. In our `loop()`, we simulate this by creating a sample `DCCMessage`.
+3.  **Queueing a Response:** We pass this DCC message to our `stateMachine`. It contains the application logic and decides what message to send back. For a simple address broadcast, it will call `railcomTx.queueAddress()`.
+4.  **Triggering the Send:** Finally, we call `railcomTx.on_cutout_start()`. This is the trigger. The library takes over, asserts the cutout control pin, and sends the queued message via the UART TX pin. The `railcomTx.task()` function, called at the top of the loop, ensures this process is handled correctly without blocking the rest of your code.

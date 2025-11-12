@@ -81,3 +81,6 @@ For a detailed overview of the testing strategy, please see the **[Testing Docum
 A simple web-based tool for decoding RailCom messages. You can paste hexadecimal or binary values and see the decoded 6-bit values and the full payload.
 
 **[Try it here!](https://chatelao.github.io/xDuinoRails_Railcom/tools/index.html)**
+
+## Contributing
+Contributions are welcome! Please open an issue or submit a pull request on the [GitHub repository](https://github.com/chatelao/xDuinoRails_Railcom).
