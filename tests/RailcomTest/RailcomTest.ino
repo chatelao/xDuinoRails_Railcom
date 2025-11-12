@@ -249,6 +249,7 @@ void setup() {
   run_test(logon_error_cases_e2e);
   run_test(backoff_mechanism_e2e);
   run_test(data_space_request_e2e);
+  run_test(registration_via_address_0_e2e);
 
   Serial.println("All tests passed!");
 }
@@ -1126,4 +1127,44 @@ test(backoff_mechanism_e2e) {
   tx.on_cutout_start();
   assertTrue(!txHardware.getSentBytes().empty());
   txHardware.clear();
+}
+
+/**
+ * @brief Verifies the "Decoder Registration via Address 0" feature.
+ * @see RCN-217, Section 5.2.4
+ */
+test(registration_via_address_0_e2e) {
+  MockRailcomTxHardware txHardware;
+  MockRailcomRxHardware rxHardware;
+  RailcomTx tx(&txHardware);
+  RailcomRx rx(&rxHardware);
+
+  // --- SCENARIO 1: Registration is ENABLED (CV28, Bit 4 is set) ---
+  // CV28 = 0b00010000 (Bit 4 set), CV29 = 0b00001000 (RailCom enabled)
+  uint8_t cv29_value = 0b00001010;
+  DecoderStateMachine sm_enabled(tx, DecoderType::LOCOMOTIVE, 100, 0b00010000, cv29_value);
+
+  // Simulate a DCC POM read command for CV 29 to the long address 0.
+  // DCC packet for long address 0: 11000000 00000000
+  // POM read CV 29: 11100100 00011101 (binary representation of 29)
+  uint8_t dcc_data[] = {0xC0, 0x00, 0b11100100, 29, 0};
+  DCCMessage msg(dcc_data, 5);
+  sm_enabled.handleDccPacket(msg);
+  tx.on_cutout_start();
+
+  // Verify that a POM response with the value of CV29 is sent.
+  rxHardware.setRxBuffer(txHardware.getSentBytes());
+  RailcomMessage* railcomMsg = rx.read();
+  assertNotNull(railcomMsg);
+  assertEqual(railcomMsg->id, RailcomID::POM);
+  assertEqual(static_cast<PomMessage*>(railcomMsg)->cvValue, cv29_value);
+  txHardware.clear();
+
+  // --- SCENARIO 2: Registration is DISABLED (CV28, Bit 4 is not set) ---
+  DecoderStateMachine sm_disabled(tx, DecoderType::LOCOMOTIVE, 100, 0b00000000, cv29_value);
+  sm_disabled.handleDccPacket(msg);
+  tx.on_cutout_start();
+
+  // Verify that NO message was sent.
+  assertTrue(txHardware.getSentBytes().empty());
 }
