@@ -128,6 +128,11 @@ This document details the implementation status of features from the RCN-217 and
     *   **Status: Implemented**
     *   **Details:** The `DecoderStateMachine` now automatically responds to `XF1` (location request), `XF2` (rerailing search), `XF3` (CV-Auto toggle), and standard accessory decoder commands. This provides a comprehensive set of responses for common DCC operations.
 
+*   **Decoder Registration via Address 0 (RCN-217, 5.2.4)**
+    *   **Status: Implemented**
+    *   **Details:** The `DecoderStateMachine` now correctly handles the registration logic by responding to a POM read of CV29 on the long address 0, conditioned on CV28, bit 4.
+    *   **Test:** Verified end-to-end in `tests/RailcomTest/registration_via_address_0_e2e`.
+
 ---
 
 ## RailComPlus Features (RCN-218)

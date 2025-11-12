@@ -173,9 +173,19 @@ void DecoderStateMachine::setupCallbacks() {
     /**
      * @brief Handles a POM Read CV command.
      * @details Sends a POM response with the (dummy) value of the requested CV.
-     * @see RCN-217, 5.1.1
+     * @see RCN-217, 5.1.1 & 5.2.4
      */
     _dccParser.onPomReadCv = [this](uint16_t cv, uint16_t address) {
+        // RCN-217, 5.2.4: Handle decoder registration via programming address 0.
+        if (address == 0 && cv == 29) {
+            // Only respond if bit 4 of CV28 is set.
+            if ((_cv28 & 0b00010000) != 0) {
+                // The response is the content of CV29.
+                _txManager.sendPomResponse(_cv29);
+            }
+            return; // Explicitly return to avoid processing as a standard POM.
+        }
+
         if (address == _address) {
             uint8_t value = 42; // Dummy value for the requested CV
             _txManager.sendPomResponse(value);
