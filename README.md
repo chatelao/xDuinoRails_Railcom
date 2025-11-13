@@ -42,6 +42,15 @@ DCC Command Station (Microcontroller)    Decoder (Microcontroller)
 -   **Comprehensive Examples:** Includes `Dummy` and `NmraDcc`-based examples for various decoder types.
 -   **Web-based Tool:** A [web-based tool](https://chatelao.github.io/xDuinoRails_Railcom/tools/index.html) for decoding RailCom messages.
 
+## Examples
+
+The library includes a variety of examples in the `examples/` directory to help you get started quickly. Here are some of the key examples:
+
+-   **CommandStation:** A complete example for a command station or RailCom detector. It demonstrates how to use the `RailcomRx` class to receive and print all incoming RailCom messages, effectively acting as a "RailCom Sniffer."
+-   **LocomotiveDecoderNmra:** A realistic locomotive decoder that uses the `NmraDcc` library to receive DCC commands and the `RailcomTx` class to send appropriate RailCom responses.
+-   **AccessoryDecoderFeedback:** An accessory decoder that provides feedback on its status (e.g., turnout position) via RailCom.
+-   **Rcn218Logon:** A specific example demonstrating the RailComPlus automatic logon procedure.
+
 ## Real-World Use Cases
 
 RailCom's bidirectional communication opens up many possibilities for realistic and automated layout control. Here are some of the most common applications:
