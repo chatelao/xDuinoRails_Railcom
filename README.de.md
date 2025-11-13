@@ -42,6 +42,15 @@ DCC-Zentrale (Mikrocontroller)        Decoder (Mikrocontroller)
 -   **Umfassende Beispiele:** Enthält `Dummy`- und `NmraDcc`-basierte Beispiele für verschiedene Decodertypen.
 -   **Web-basiertes Werkzeug:** Ein [web-basiertes Werkzeug](https://chatelao.github.io/xDuinoRails_Railcom/tools/index.html) zum Dekodieren von RailCom-Nachrichten.
 
+## Beispiele
+
+Die Bibliothek enthält eine Vielzahl von Beispielen im `examples/`-Verzeichnis, um Ihnen den schnellen Einstieg zu erleichtern. Hier sind einige der wichtigsten Beispiele:
+
+-   **CommandStation:** Ein vollständiges Beispiel für eine Digitalzentrale oder einen RailCom-Detektor. Es zeigt, wie die `RailcomRx`-Klasse verwendet wird, um alle eingehenden RailCom-Nachrichten zu empfangen und auszugeben, und fungiert somit als "RailCom-Sniffer".
+-   **LocomotiveDecoderNmra:** Ein realistischer Lokomotivdecoder, der die `NmraDcc`-Bibliothek zum Empfangen von DCC-Befehlen und die `RailcomTx`-Klasse zum Senden entsprechender RailCom-Antworten verwendet.
+-   **AccessoryDecoderFeedback:** Ein Zubehördecoder, der eine Rückmeldung über seinen Status (z.B. Weichenstellung) über RailCom gibt.
+-   **Rcn218Logon:** Ein spezifisches Beispiel, das das automatische Anmeldeverfahren von RailComPlus demonstriert.
+
 ## Anwendungsfälle in der Praxis
 
 Die bidirektionale Kommunikation von RailCom eröffnet viele Möglichkeiten für eine realistische und automatisierte Anlagensteuerung. Hier sind einige der häufigsten Anwendungen:
