@@ -29,7 +29,6 @@ Manages the reception and parsing of RailCom messages. Designed for use in a com
 
 - **`RailcomRx(RailcomRxHardware* hardware)`**: Constructor. Takes a pointer to a concrete hardware implementation (e.g., `RP2040RailcomRxHardware`).
 - **`void begin()`**: Initializes the receiver.
-- **`void task()`**: A periodic task function to be called in the main loop.
 - **`RailcomMessage* read()`**: Reads, decodes, and parses a message from the hardware. Returns a pointer to a base `RailcomMessage` struct. The caller must cast this to the appropriate message type based on the `id` field. Returns `nullptr` if no valid message is available.
 - **`void setContext(DecoderContext context)`**: Sets the context (e.g., `MOBILE` or `STATIONARY`) to disambiguate messages with shared IDs.
 - **`void print(Print& stream)`**: Prints a human-readable summary of the last received message to a stream (e.g., `Serial`).
@@ -42,6 +41,17 @@ A high-level class that encapsulates the logic of a decoder, linking DCC packet 
 - **`DecoderStateMachine(RailcomTx& txManager, ...)`**: Constructor. Takes a reference to `RailcomTx` and various decoder configuration parameters (type, address, CVs, etc.).
 - **`void handleDccPacket(const DCCMessage& dccMsg)`**: The main entry point. Analyzes an incoming `DCCMessage` and triggers the appropriate RailCom response.
 - **`void task()`**: A periodic task function for handling background processes like the automatic CV broadcast.
+
+### `CommandStationRx`
+
+A high-level class that simplifies receiving and processing RailCom data from the perspective of a command station or detector. It is the receiving counterpart to the `DecoderStateMachine`.
+
+- **`CommandStationRx(RailcomRx* rx)`**: Constructor. Takes a pointer to an initialized `RailcomRx` instance.
+- **`void begin()`**: Initializes the handler.
+- **`void task()`**: The main periodic function that must be called in your `loop()`. It reads and processes incoming messages, triggering callbacks as needed.
+- **`void onLocoIdentified(LocoIdentifiedCallback callback)`**: Attaches a callback function that is triggered when a full locomotive address (short or long) is successfully received.
+- **`void onPomResponse(PomResponseCallback callback)`**: Attaches a callback for when a POM response is received. The callback provides the address of the sender and the CV value.
+- **`void onAccessoryStatus(AccessoryStatusCallback callback)`**: Attaches a callback for when an accessory decoder reports its status (`STAT1`, `STAT2`, or `STAT4`).
 
 ### `RailcomDccParser`
 
