@@ -106,9 +106,14 @@ std::vector<uint8_t> encodeDatagram(RailcomID id, uint64_t payload, uint8_t payl
     if (totalBits % 6 != 0) {
         totalBits = ((totalBits / 6) + 1) * 6;
     }
+    uint8_t paddingBits = totalBits - (4 + payloadBits);
     uint8_t numBytes = totalBits / 6;
-    // Combine the ID and payload into a single 64-bit integer for easier manipulation.
+
+    // Combine the ID and payload into a single 64-bit integer.
+    // Then shift left to add padding at the LSB (end of message).
+    // Structure: [ID] [Payload] [Padding]
     uint64_t data = ((uint64_t)static_cast<uint8_t>(id) << payloadBits) | payload;
+    data <<= paddingBits;
 
     std::vector<uint8_t> encodedBytes;
     int currentBit = totalBits - 6;

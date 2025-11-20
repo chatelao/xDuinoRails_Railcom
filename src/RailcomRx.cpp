@@ -319,7 +319,8 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             AdrMessage* msg = new AdrMessage();
             msg->id = id;
             // Per RCN-217 for long addresses, the address is in the lower 6 bits.
-            msg->address = payload & 0x3F;
+            // LSB Padding means we have [Payload 6] [Pad 2]. Shift out padding.
+            msg->address = (payload >> 2) & 0x3F;
             return msg;
         }
         case RailcomID::ADR_LOW: { // RCN-217, 5.2.3
@@ -436,13 +437,15 @@ RailcomMessage* RailcomRx::parseMessage(const std::vector<uint8_t>& buffer) {
             return nullptr;
         }
         case RailcomID::RERAIL: { // RCN-217, 5.2.12
-            if (bitCount - 4 == 12) { // SRQ
+            if (bitCount == 18) { // SRQ (12 payload + 2 pad + 4 ID = 18 bits)
                 SrqMessage* msg = new SrqMessage();
                 msg->id = RailcomID::SRQ;
-                msg->isExtended = (payload >> 11) & 0x01;
-                msg->accessoryAddress = payload & 0x7FF;
+                // Shift out 2 bits of padding
+                uint64_t realPayload = payload >> 2;
+                msg->isExtended = (realPayload >> 11) & 0x01;
+                msg->accessoryAddress = realPayload & 0x7FF;
                 return msg;
-            } else { // RERAIL
+            } else { // RERAIL (8 payload + 4 ID = 12 bits)
                 RerailMessage* msg = new RerailMessage();
                 msg->id = RailcomID::RERAIL;
                 msg->counter = payload;

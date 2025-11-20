@@ -41,7 +41,7 @@ const railcomMessageTypes = {
   11: { lengths: [6] },   // XPOM_3
   12: { lengths: [4] },   // CV_AUTO
   13: { lengths: [4] },   // DECODER_STATE
-  14: { lengths: [2] },   // RERAIL
+  14: { lengths: [3, 2] },   // SRQ, RERAIL
   15: { lengths: [6] },   // DECODER_UNIQUE
 };
 
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
               break;
           case 1: // ADR_HIGH (Address High Byte)
               {
-                  const part = Number(payload & 0x3Fn); // Per RCN-217, address is in the lower 6 bits
+                  const part = Number((payload >> 2n) & 0x3Fn); // Shift out 2 padding bits
                   interpretation += `Address part: ${part} (0b${part.toString(2).padStart(6, '0')})`;
                   lastAdrHigh = part;
                   if (lastAdrLow !== null) {
@@ -282,9 +282,17 @@ document.addEventListener('DOMContentLoaded', () => {
                   interpretation += `State: ${payload.toString()}\n(Note: Meaning is application-specific, e.g., motor status, function state)`;
               }
               break;
-          case 14: // RERAIL
+          case 14: // RERAIL / SRQ
               {
-                  interpretation += `Rerail counter: ${payload.toString()}`;
+                  if (messageChunks.length === 3) { // SRQ
+                      // Payload (14 bits): [Address 11][Ext 1][Pad 2]
+                      const realPayload = Number(payload >> 2n);
+                      const isExtended = (realPayload >> 11) & 1;
+                      const address = realPayload & 0x7FF;
+                      interpretation += `SRQ\nAccessory Address: ${address}\nExtended: ${isExtended ? 'Yes' : 'No'}`;
+                  } else { // RERAIL
+                      interpretation += `Rerail counter: ${payload.toString()}`;
+                  }
               }
               break;
           case 15: // DECODER_UNIQUE
