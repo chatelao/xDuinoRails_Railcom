@@ -250,6 +250,7 @@ void setup() {
   run_test(backoff_mechanism_e2e);
   run_test(data_space_request_e2e);
   run_test(registration_via_address_0_e2e);
+  run_test(padding_verification);
 
   Serial.println("All tests passed!");
 }
@@ -1167,4 +1168,50 @@ test(registration_via_address_0_e2e) {
 
   // Verify that NO message was sent.
   assertTrue(txHardware.getSentBytes().empty());
+}
+
+/**
+ * @brief Verifies that the 4-of-8 encoding uses LSB padding as per RCN-217.
+ * @details Checks the raw bytes for ADR_HIGH (ID 1, 6 bit payload, 2 bit pad) and SRQ (ID 14, 12 bit payload, 2 bit pad).
+ * @see RCN-217, Section 2.3.1
+ */
+test(padding_verification) {
+  MockRailcomTxHardware txHardware;
+  RailcomTx tx(&txHardware);
+
+  // --- Test ADR_HIGH Padding ---
+  // Address = 16128 (0x3F00). High part is 0x3F.
+  // Payload = 0x3F (111111).
+  // ID = 1 (0001).
+  // Stream (LSB Pad): [ID 4][Payload 6][Pad 2]
+  // 0001 1111 11 00
+  // Chunk 1: 000111 (0x07) -> ENCODE_TABLE[7] = 0x2D
+  // Chunk 2: 111100 (0x3C) -> ENCODE_TABLE[60] = 0xCC
+  tx.sendAddress(16128);
+  tx.on_cutout_start();
+
+  const auto& bytes = txHardware.getSentBytes();
+  assertEqual(bytes.size(), 2);
+  assertEqual(bytes[0], 0x2D);
+  assertEqual(bytes[1], 0xCC);
+  txHardware.clear();
+
+  // --- Test SRQ Padding ---
+  // Address = 0x7FF (Max). Extended = true.
+  // Payload = (0x7FF) | 0x800 = 0xFFF. (All 1s, 12 bits).
+  // ID = 14 (1110).
+  // Stream (LSB Pad): [ID 4][Payload 12][Pad 2]
+  // 1110 1111 1111 1111 00
+  // Chunk 1: 111011 (0x3B) -> ENCODE_TABLE[59] = 0xCA
+  // Chunk 2: 111111 (0x3F) -> ENCODE_TABLE[63] = 0xD4
+  // Chunk 3: 111100 (0x3C) -> ENCODE_TABLE[60] = 0xCC
+  tx.sendServiceRequest(0x7FF, true);
+  tx.on_cutout_start();
+
+  const auto& bytes2 = txHardware.getSentBytes();
+  assertEqual(bytes2.size(), 3);
+  assertEqual(bytes2[0], 0xCA);
+  assertEqual(bytes2[1], 0xD4);
+  assertEqual(bytes2[2], 0xCC);
+  txHardware.clear();
 }

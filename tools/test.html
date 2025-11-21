@@ -44,7 +44,7 @@
         assert.equal(decodeRawId([0, 0, 22, 0]), "ID: POM (0)\nPayload: 0x05_80", "POM, CV 5, value 128");
 
         // Test Case 3: ADR_HIGH, address 1234. The high byte is 4.
-        assert.equal(decodeRawId([4, 4]), "ID: ADR_HIGH (1)\nPayload: 0x04", "ADR_HIGH, address 1234");
+        assert.equal(decodeRawId([4, 16]), "ID: ADR_HIGH (1)\nPayload: 0x10 (0b0001_0000)", "ADR_HIGH, address 1234");
 
         // Test Case 4: TIME, 12.7 seconds.
         assert.equal(decodeRawId([21, 63]), "ID: TIME (5)\nPayload: 0x7F (0b0111_1111)", "TIME, 12.7s");
@@ -60,13 +60,16 @@
         assert.equal(decodePayload([0, 0, 22, 0]), "ID: POM (0)\nCV: 5 (0x5)\nValue: 128\n<a href=\"encoder.html?id=0&payload=0580\" target=\"_blank\">Edit</a>", "POM, CV 5, value 128");
 
         // Test Case 3: ADR_HIGH, address part 4.
-        assert.equal(decodePayload([4, 4]), "ID: ADR_HIGH (1)\nAddress part: 4 (0b00000100)\n<a href=\"encoder.html?id=1&payload=04\" target=\"_blank\">Edit</a>", "ADR_HIGH, address part 4");
+        assert.equal(decodePayload([4, 16]), "ID: ADR_HIGH (1)\nAddress part: 4 (0b00000100)\n<a href=\"encoder.html?id=1&payload=10\" target=\"_blank\">Edit</a>", "ADR_HIGH, address part 4");
 
         // Test Case 4: TIME, 12.7 seconds
         assert.equal(decodePayload([21, 63]), "ID: TIME (5)\nRestlaufzeit: 12.7 Sekunden\n<a href=\"encoder.html?id=5&payload=7F\" target=\"_blank\">Edit</a>", "TIME, 12.7s");
 
         // Test Case 5: TIME, 127 seconds
         assert.equal(decodePayload([23, 63]), "ID: TIME (5)\nRestlaufzeit: 127 Sekunden\n<a href=\"encoder.html?id=5&payload=FF\" target=\"_blank\">Edit</a>", "TIME, 127s");
+
+        // Test Case 6: SRQ, Address 2047, Extended
+        assert.equal(decodePayload([59, 63, 60]), "ID: SRQ (14)\nSRQ\nAccessory Address: 2047\nExtended: Yes\n<a href=\"encoder.html?id=14&payload=3FFC\" target=\"_blank\">Edit</a>", "SRQ, Address 2047, Extended");
       });
     });
   </script>

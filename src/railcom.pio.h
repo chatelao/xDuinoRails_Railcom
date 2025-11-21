@@ -14,7 +14,6 @@
 
 #define railcom_cutout_wrap_target 0
 #define railcom_cutout_wrap 6
-#define railcom_cutout_pio_version 0
 
 static const uint16_t railcom_cutout_program_instructions[] = {
             //     .wrap_target
@@ -33,10 +32,6 @@ static const struct pio_program railcom_cutout_program = {
     .instructions = railcom_cutout_program_instructions,
     .length = 7,
     .origin = -1,
-    .pio_version = railcom_cutout_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config railcom_cutout_program_get_default_config(uint offset) {
